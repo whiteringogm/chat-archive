@@ -61,6 +61,8 @@ const STORE = "seishi-archive-v2",
   SETTINGS = "seishi-settings-v2",
   DB_NAME = "seishi-archive",
   DB_STORE = "archive",
+  BACKUP_FORMAT = "seishi-archive-backup",
+  BACKUP_VERSION = 1,
   BUILTIN_PERSONAS = [
     "🕯️ かげちゃん",
     "🌕 まんちゃん",
@@ -822,6 +824,57 @@ function download(name, data, type) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+function backupPayload() {
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    createdAt: new Date().toISOString(),
+    settings,
+    sessions: all,
+  };
+}
+function byteLabel(bytes) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+function updateBackupSummary() {
+  const el = $("backupSummary");
+  if (!el) return;
+  const sessions = all.length;
+  const messages = all.reduce((n, s) => n + (s.messages?.length || 0), 0);
+  el.textContent = `${sessions.toLocaleString()}セッション・${messages.toLocaleString()}発言を、会話本文と整理情報ごと保存します。`;
+}
+async function backupBlob() {
+  const json = JSON.stringify(backupPayload());
+  const source = new Blob([json], { type: "application/json" });
+  if (typeof CompressionStream === "undefined")
+    return { blob: source, extension: "json" };
+  const compressed = await new Response(
+    source.stream().pipeThrough(new CompressionStream("gzip")),
+  ).blob();
+  return { blob: compressed, extension: "json.gz" };
+}
+async function readBackupFile(file) {
+  let text;
+  if (file.name.toLowerCase().endsWith(".gz")) {
+    if (typeof DecompressionStream === "undefined")
+      throw new Error("このブラウザは圧縮バックアップの復元に対応していません。");
+    text = await new Response(
+      file.stream().pipeThrough(new DecompressionStream("gzip")),
+    ).text();
+  } else text = await file.text();
+  const data = JSON.parse(text);
+  if (
+    data?.format !== BACKUP_FORMAT ||
+    !Number.isInteger(data.version) ||
+    data.version > BACKUP_VERSION ||
+    !Array.isArray(data.sessions) ||
+    !data.settings ||
+    typeof data.settings !== "object"
+  )
+    throw new Error("正史編纂室の完全バックアップではありません。");
+  return data;
+}
 const renderConversation = renderViewer;
 function openSession(id) {
   selected = id;
@@ -1107,6 +1160,7 @@ $("titleSearch").addEventListener("input", () => {
 );
 $("settingsBtn").onclick = () => {
   renderManagers();
+  updateBackupSummary();
   $("settings").showModal();
 };
 $("addFolder").onclick = () => addCustom("folder");
@@ -1134,6 +1188,63 @@ $("saveSettings").onclick = () => {
   rebuildFilters();
   renderList();
   renderViewer();
+};
+$("exportBackup").onclick = async () => {
+  const button = $("exportBackup");
+  button.disabled = true;
+  button.textContent = "バックアップ作成中…";
+  try {
+    const { blob, extension } = await backupBlob();
+    const day = new Date().toLocaleDateString("sv-SE", {
+      timeZone: "Asia/Tokyo",
+    });
+    download(`正史編纂室バックアップ_${day}.${extension}`, blob, blob.type);
+    alert(`完全バックアップ（${byteLabel(blob.size)}）を書き出しました。`);
+  } catch (err) {
+    console.error(err);
+    alert(`バックアップの作成に失敗しました。${err.message || ""}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "バックアップを書き出す";
+  }
+};
+$("backupFile").onchange = async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+  try {
+    const data = await readBackupFile(file);
+    const messages = data.sessions.reduce(
+      (n, s) => n + (s.messages?.length || 0),
+      0,
+    );
+    if (
+      !confirm(
+        `${data.sessions.length.toLocaleString()}セッション・${messages.toLocaleString()}発言のバックアップです。\n現在の端末内データを置き換えて復元しますか？`,
+      )
+    )
+      return;
+    all = data.sessions;
+    settings = {
+      ...settings,
+      ...data.settings,
+      defaultsVersion: 4,
+    };
+    await save();
+    await load();
+    selected = "";
+    viewMode = "folders";
+    bulkSelected.clear();
+    messageSelected.clear();
+    $("settings").close();
+    rebuildFilters();
+    renderList();
+    renderViewer();
+    alert("完全バックアップから復元しました。");
+  } catch (err) {
+    console.error(err);
+    alert(`復元できませんでした。${err.message || "ファイルをご確認ください。"}`);
+  }
 };
 $("clearArchive").onclick = async () => {
   if (confirm("端末内に保存した会話と編集内容をすべて消しますか？")) {

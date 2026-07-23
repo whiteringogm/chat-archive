@@ -1398,3 +1398,41 @@ $("backupFile").onchange = async (e) => {
       ...settings,
       ...data.settings,
       defaultsVersion: 4,
+    };
+    await save();
+    await load();
+    selected = "";
+    viewMode = "folders";
+    bulkSelected.clear();
+    messageSelected.clear();
+    $("settings").close();
+    rebuildFilters();
+    renderList();
+    renderViewer();
+    alert("完全バックアップから復元しました。");
+  } catch (err) {
+    console.error(err);
+    alert(`復元できませんでした。${err.message || "ファイルをご確認ください。"}`);
+  }
+};
+$("clearArchive").onclick = async () => {
+  if (confirm("端末内に保存した会話と編集内容をすべて消しますか？")) {
+    await dbDelete(STORE);
+    localStorage.removeItem(STORE);
+    all = [];
+    selected = "";
+    $("settings").close();
+    rebuildFilters();
+    renderList();
+    showFolders();
+  }
+};
+(async () => {
+  await load();
+  selected = "";
+  viewMode = "folders";
+  rebuildFilters();
+  renderList();
+  renderViewer();
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
+})();

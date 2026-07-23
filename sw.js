@@ -1,4 +1,4 @@
-const CACHE="seishi-v17",FILES=["./","./index.html","./style.css","./browser.css","./app.js","./manifest.json","./icon.svg"];
+const CACHE="seishi-v18",FILES=["./","./index.html","./style.css","./browser.css","./app.js","./manifest.json","./icon.svg"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
 self.addEventListener("fetch",e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));

@@ -369,9 +369,16 @@ function messageMatchesFilters(x, model, speaker) {
     (!speaker || x.role === speaker)
   );
 }
+function searchTerms(q) {
+  return q.trim().toLowerCase().split(/\\s+/).filter(Boolean);
+}
+function includesAllTerms(text, q) {
+  const hay = replaceText(text).toLowerCase();
+  return searchTerms(q).every((term) => hay.includes(term));
+}
 function filtered() {
-  const tq = $("titleSearch").value.trim().toLowerCase(),
-    q = $("search").value.trim().toLowerCase(),
+  const tq = $("titleSearch").value.trim(),
+    q = $("search").value.trim(),
     m = $("model").value,
     p = $("persona").value,
     f = $("folder").value,
@@ -379,18 +386,18 @@ function filtered() {
   return all.filter(
     (s) =>
       !s.trashedAt &&
-      (!tq || replaceText(s.title).toLowerCase().includes(tq)) &&
+      (!tq || includesAllTerms(s.title, tq)) &&
       (!m || s.models.includes(m)) &&
       (!p || effectivePersona(s) === p) &&
       (!f || s.folder === f) &&
       (!speaker ||
         s.messages.some((x) => messageMatchesFilters(x, m, speaker))) &&
       (!q ||
-        (!m && !speaker && replaceText(s.title).toLowerCase().includes(q)) ||
+        (!m && !speaker && includesAllTerms(s.title, q)) ||
         s.messages.some(
           (x) =>
             messageMatchesFilters(x, m, speaker) &&
-            replaceText(x.text).toLowerCase().includes(q),
+            includesAllTerms(x.text, q),
         )),
   );
 }
@@ -399,29 +406,29 @@ function activeSessions() {
 }
 function matchInfo(s, q) {
   if (!q) return { count: 0, preview: "" };
-  const needle = q.toLowerCase(),
+  const terms = searchTerms(q),
     model = $("model").value,
     speaker = $("speaker").value,
     hits = s.messages.filter(
       (x) =>
         messageMatchesFilters(x, model, speaker) &&
-        replaceText(x.text).toLowerCase().includes(needle),
+        includesAllTerms(x.text, q),
     ),
     first = hits[0];
   if (!first)
     return {
-      count:
-        !model &&
-        !speaker &&
-        replaceText(s.title).toLowerCase().includes(needle)
-          ? 1
-          : 0,
+      count: !model && !speaker && includesAllTerms(s.title, q) ? 1 : 0,
       preview: "タイトルに一致",
     };
   const text = replaceText(first.text),
-    at = text.toLowerCase().indexOf(needle),
+    lower = text.toLowerCase(),
+    positions = terms.map((term) => lower.indexOf(term)).filter((at) => at >= 0),
+    at = positions.length ? Math.min(...positions) : 0,
+    endAt = positions.length
+      ? Math.max(...terms.map((term) => lower.indexOf(term) + term.length))
+      : at + q.length,
     start = Math.max(0, at - 55),
-    end = Math.min(text.length, at + q.length + 90);
+    end = Math.min(text.length, endAt + 90);
   return {
     count: hits.length,
     preview:
@@ -505,8 +512,11 @@ function renderList() {
 }
 function mark(text, q) {
   let h = esc(replaceText(text));
-  if (!q) return h;
-  const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const terms = searchTerms(q).sort((a, b) => b.length - a.length);
+  if (!terms.length) return h;
+  const safe = terms
+    .map((term) => esc(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
   return h.replace(
     new RegExp(safe, "gi"),
     (x) => `<mark class="hit">${x}</mark>`,
@@ -570,13 +580,13 @@ function renderMarkdown(text) {
   if (codeLines.length) html += `<pre><code>${esc(codeLines.join("\n"))}</code></pre>`;
   return html;
 }
-function renderSessionPanel(){const p=$("sessionPanel"),s=all.find(x=>x.id===selected);if(!p)return;if(!s){p.innerHTML='<p class="muted">セッションを開くと使えます。</p>';return}s.namedSelections=Array.isArray(s.namedSelections)?s.namedSelections:[];const n=messageSelected.size,shown=visibleMessages(s),q=sessionMessageQuery.trim().toLowerCase(),hitCount=shown.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!q||replaceText(m.text).toLowerCase().includes(q))).length,filtering=Boolean(q||sessionModelFilter);p.innerHTML=`<div class="session-panel-head"><strong>このセッション</strong><button id="closeSessionPanel" aria-label="閉じる">×</button></div><div class="session-panel-grid"><button id="sessionTop" class="session-panel-action">↑ 最上部</button><button id="sessionBottom" class="session-panel-action">↓ 最下部</button><button id="panelCopy" class="session-panel-action primary" ${n?"":"disabled"}>コピー（${n}）</button><button id="panelSaveMemory" class="session-panel-action primary" ${n?"":"disabled"}>思い出保存</button></div><div class="session-panel-section"><label>セッション内発言検索<input id="panelSessionSearch" type="search" value="${esc(sessionMessageQuery)}" placeholder="発言本文を検索"></label><label>モデル絞り込み<select id="panelModelFilter"><option value="">すべてのモデル</option>${s.models.map(x=>`<option value="${esc(x)}" ${x===sessionModelFilter?"selected":""}>${esc(x)}</option>`).join("")}</select></label><label class="session-panel-check"><input id="panelIncludePrevious" type="checkbox" ${sessionIncludePrevious?"checked":""} ${sessionModelFilter?"":"disabled"}>直前の入力も表示</label><span id="panelFilterCount" class="session-panel-count">${filtering?`${hitCount} / ${shown.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。"}</span><button id="panelShowResults" class="session-panel-result" ${filtering?"":"disabled"}>検索結果を見る</button></div><div class="session-panel-section"><strong>このセッション内の思い出（${s.namedSelections.length}）</strong><div class="session-panel-memories">${s.namedSelections.length?s.namedSelections.map(x=>`<button class="session-panel-memory" data-panel-memory="${esc(x.id)}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join(""):'<span class="session-panel-count">まだ保存されていません。</span>'}</div></div><div class="session-panel-section"><button id="focusModeBtn" class="session-panel-action">UI非表示で全画面表示</button></div>`;
+function renderSessionPanel(){const p=$("sessionPanel"),s=all.find(x=>x.id===selected);if(!p)return;if(!s){p.innerHTML='<p class="muted">セッションを開くと使えます。</p>';return}s.namedSelections=Array.isArray(s.namedSelections)?s.namedSelections:[];const n=messageSelected.size,shown=visibleMessages(s),q=sessionMessageQuery.trim().toLowerCase(),hitCount=shown.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!q||includesAllTerms(m.text, q))).length,filtering=Boolean(q||sessionModelFilter);p.innerHTML=`<div class="session-panel-head"><strong>このセッション</strong><button id="closeSessionPanel" aria-label="閉じる">×</button></div><div class="session-panel-grid"><button id="sessionTop" class="session-panel-action">↑ 最上部</button><button id="sessionBottom" class="session-panel-action">↓ 最下部</button><button id="panelCopy" class="session-panel-action primary" ${n?"":"disabled"}>コピー（${n}）</button><button id="panelSaveMemory" class="session-panel-action primary" ${n?"":"disabled"}>思い出保存</button></div><div class="session-panel-section"><label>セッション内発言検索<input id="panelSessionSearch" type="search" value="${esc(sessionMessageQuery)}" placeholder="発言本文を検索"></label><label>モデル絞り込み<select id="panelModelFilter"><option value="">すべてのモデル</option>${s.models.map(x=>`<option value="${esc(x)}" ${x===sessionModelFilter?"selected":""}>${esc(x)}</option>`).join("")}</select></label><label class="session-panel-check"><input id="panelIncludePrevious" type="checkbox" ${sessionIncludePrevious?"checked":""} ${sessionModelFilter?"":"disabled"}>直前の入力も表示</label><span id="panelFilterCount" class="session-panel-count">${filtering?`${hitCount} / ${shown.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。"}</span><button id="panelShowResults" class="session-panel-result" ${filtering?"":"disabled"}>検索結果を見る</button></div><div class="session-panel-section"><strong>このセッション内の思い出（${s.namedSelections.length}）</strong><div class="session-panel-memories">${s.namedSelections.length?s.namedSelections.map(x=>`<button class="session-panel-memory" data-panel-memory="${esc(x.id)}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join(""):'<span class="session-panel-count">まだ保存されていません。</span>'}</div></div><div class="session-panel-section"><button id="focusModeBtn" class="session-panel-action">UI非表示で全画面表示</button></div>`;
 $("closeSessionPanel").onclick=closeSessionPanel;$("sessionTop").onclick=()=>scrollSessionEdge(false);$("sessionBottom").onclick=()=>scrollSessionEdge(true);$("panelCopy").onclick=()=>$("copyMessages")?.click();$("panelSaveMemory").onclick=()=>$("saveNamedSelection")?.click();$("panelShowResults").onclick=()=>{closeSessionPanel();requestAnimationFrame(()=>document.querySelector(".conversation .message")?.scrollIntoView({behavior:"smooth",block:"start"}))};const panelSearch=$("panelSessionSearch");let panelSearchComposing=false;const applyPanelSearch=()=>{const value=panelSearch.value;if(value===sessionMessageQuery)return;sessionMessageQuery=value;renderViewer({updatePanel:false});const current=all.find(x=>x.id===selected),messages=current?visibleMessages(current):[],needle=sessionMessageQuery.trim().toLowerCase(),count=messages.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!needle||replaceText(m.text).toLowerCase().includes(needle))).length,filteringNow=Boolean(needle||sessionModelFilter),status=$("panelFilterCount"),show=$("panelShowResults");if(status)status.textContent=filteringNow?`${count} / ${messages.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。";if(show)show.disabled=!filteringNow};panelSearch.oncompositionstart=()=>{panelSearchComposing=true};panelSearch.oncompositionend=()=>{panelSearchComposing=false;queueMicrotask(applyPanelSearch)};panelSearch.oninput=e=>{if(panelSearchComposing||e.isComposing)return;applyPanelSearch()};$("panelModelFilter").onchange=e=>{sessionModelFilter=e.target.value;if(!sessionModelFilter)sessionIncludePrevious=false;renderViewer();};$("panelIncludePrevious").onchange=e=>{sessionIncludePrevious=e.target.checked;renderViewer();};document.querySelectorAll("[data-panel-memory]").forEach(b=>b.onclick=()=>{const m=s.namedSelections.find(x=>x.id===b.dataset.panelMemory);activeNamedSelection=m?.id||"";sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();const first=m?.messageIds.find(id=>visibleMessages(s).some(x=>x.id===id));if(first)setTimeout(()=>$("msg-"+first)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});$("focusModeBtn").onclick=()=>{closeSessionPanel();closeSidebar();document.body.classList.add("focus-mode")}}
 function renderViewer({updatePanel=true}={}) {
   const s = all.find((x) => x.id === selected);
   if (!s) return;
   s.namedSelections = Array.isArray(s.namedSelections) ? s.namedSelections : [];
-  const q=sessionMessageQuery.trim(),model=sessionModelFilter,allShown=visibleMessages(s),directMatches=allShown.filter(m=>(!model||(m.role==="assistant"&&m.model===model))&&(!q||replaceText(m.text).toLowerCase().includes(q.toLowerCase()))),contextIds=new Set(directMatches.map(m=>m.id)),shown=(()=>{if(model&&sessionIncludePrevious)directMatches.forEach(m=>{const i=allShown.findIndex(x=>x.id===m.id);for(let j=i-1;j>=0;j--)if(allShown[j].role==="user"){contextIds.add(allShown[j].id);break}});return allShown.filter(m=>contextIds.has(m.id))})(),
+  const q=sessionMessageQuery.trim(),model=sessionModelFilter,allShown=visibleMessages(s),directMatches=allShown.filter(m=>(!model||(m.role==="assistant"&&m.model===model))&&(!q||includesAllTerms(m.text, q))),contextIds=new Set(directMatches.map(m=>m.id)),shown=(()=>{if(model&&sessionIncludePrevious)directMatches.forEach(m=>{const i=allShown.findIndex(x=>x.id===m.id);for(let j=i-1;j>=0;j--)if(allShown[j].role==="user"){contextIds.add(allShown[j].id);break}});return allShown.filter(m=>contextIds.has(m.id))})(),
     chosen = shown.filter((m) => messageSelected.has(m.id)),
     active = s.namedSelections.find((x) => x.id === activeNamedSelection),
     activeIds = new Set(active?.messageIds || []),
@@ -1009,8 +1019,10 @@ async function readBackupFile(file) {
 }
 const renderConversation = renderViewer;
 function openSession(id) {
+  const inheritedQuery =
+    searchMode === "body" ? $("unifiedSearch").value.trim() : "";
   selected = id;
-  sessionMessageQuery = "";
+  sessionMessageQuery = inheritedQuery;
   sessionModelFilter = "";
   sessionIncludePrevious = false;
   messageSelected.clear();
@@ -1019,6 +1031,21 @@ function openSession(id) {
   viewMode = "session";
   renderList();
   renderViewer();
+  if (inheritedQuery) {
+    const s = all.find((x) => x.id === id);
+    const first = visibleMessages(s).find((m) =>
+      includesAllTerms(m.text, inheritedQuery),
+    );
+    if (first)
+      setTimeout(
+        () =>
+          $("msg-" + first.id)?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          }),
+        0,
+      );
+  }
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function showFolders() {

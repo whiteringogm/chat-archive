@@ -1227,10 +1227,16 @@ function renderFolderSessions(folder) {
   document.querySelectorAll("[data-select-id]").forEach(
     (c) =>
       (c.onchange = () => {
+        const viewerScrollTop = $("viewer").scrollTop,
+          pageScrollTop = window.scrollY;
         c.checked
           ? bulkSelected.add(c.dataset.selectId)
           : bulkSelected.delete(c.dataset.selectId);
         renderFolderSessions(folder);
+        requestAnimationFrame(() => {
+          $("viewer").scrollTop = viewerScrollTop;
+          window.scrollTo(0, pageScrollTop);
+        });
       }),
   );
   if ($("toggleAllSessions"))

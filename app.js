@@ -1465,6 +1465,24 @@ $("clearArchive").onclick = async () => {
     showFolders();
   }
 };
+let lastViewerScrollTop = 0;
+$("viewer").addEventListener("scroll", () => {
+  if (matchMedia("(max-width:760px)").matches) {
+    document.body.classList.remove("desktop-header-hidden");
+    lastViewerScrollTop = 0;
+    return;
+  }
+  const top = $("viewer").scrollTop;
+  const delta = top - lastViewerScrollTop;
+  if (top < 24 || delta < -8) document.body.classList.remove("desktop-header-hidden");
+  else if (top > 72 && delta > 8) document.body.classList.add("desktop-header-hidden");
+  lastViewerScrollTop = Math.max(0, top);
+}, { passive: true });
+addEventListener("resize", () => {
+  if (matchMedia("(max-width:760px)").matches)
+    document.body.classList.remove("desktop-header-hidden");
+});
+
 (async () => {
   await load();
   selected = "";

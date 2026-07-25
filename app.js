@@ -23,6 +23,9 @@ body.dark .message.saved-selection{background:#3c321c}body.dark .message.user.sa
 .markdown-body{white-space:normal}.markdown-body>*:first-child{margin-top:0}.markdown-body>*:last-child{margin-bottom:0}.markdown-body p{margin:.65em 0;white-space:pre-wrap}.markdown-body h1,.markdown-body h2,.markdown-body h3{margin:1em 0 .45em;font-family:inherit;line-height:1.35}.markdown-body h1{font-size:1.45em}.markdown-body h2{font-size:1.28em}.markdown-body h3{font-size:1.12em}.markdown-body ul,.markdown-body ol{margin:.6em 0;padding-left:1.7em}.markdown-body blockquote{margin:.7em 0;padding:.2em .9em;border-left:4px solid var(--accent);color:var(--muted)}.markdown-body pre{overflow:auto;padding:12px;border-radius:10px;background:#1d1921;color:#f5eef7;white-space:pre}.markdown-body code{padding:.1em .35em;border-radius:5px;background:#00000014;font-family:ui-monospace,SFMono-Regular,monospace}.markdown-body pre code{padding:0;background:transparent}.markdown-body a{color:var(--accent);text-decoration:underline}.trash-card{margin-top:10px}.trash-actions{display:flex;gap:8px;flex-wrap:wrap}.trash-actions button{padding:8px 11px;border:1px solid var(--line);border-radius:9px}.trash-actions .permanent-delete{color:#b9475e;border-color:#b9475e}.sync-manager{padding-top:14px;border-top:1px solid var(--line)}
 `;
 document.head.append(themeStyle);
+const memoStyle = document.createElement("style");
+memoStyle.textContent = `.memo-card{margin:10px 3%;padding:14px 16px;border:1px solid #cbb99d;border-left:5px solid #b99762;border-radius:13px;background:#fff9e9;line-height:1.7;overflow-wrap:anywhere}.memo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.memo-label{color:#8b6736;font-size:12px;font-weight:900;letter-spacing:.08em}.memo-actions{display:flex;flex-wrap:wrap;gap:5px}.memo-actions button,.add-memo-after{min-height:auto;padding:5px 8px;border:1px solid #d7c8ae;border-radius:8px;background:#fffdf7;color:#765a32;font-size:11px;font-weight:800}.add-memo-after{display:block;margin:-5px auto 14px;opacity:.72}.add-memo-after:hover{opacity:1}.memo-card .markdown-body p{margin:.35em 0}.memo-card a{color:#6f4fa0;text-decoration:underline;text-underline-offset:2px}.memo-date{color:var(--muted);font-size:11px}body.dark .memo-card{border-color:#6d5b43;border-left-color:#c8a66d;background:#2d281d}body.dark .memo-label,body.dark .memo-actions button,body.dark .add-memo-after{color:#e4c890}body.dark .memo-actions button,body.dark .add-memo-after{border-color:#695b43;background:#2a241b}#memoEditor textarea{min-height:180px;resize:vertical}#memoEditor .memo-help{margin:0;color:var(--muted);font-size:12px}`;
+document.head.append(memoStyle);
 const messageCopyStyle = document.createElement("style");
 messageCopyStyle.textContent = `.session-message-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.55fr);gap:9px;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}.session-message-filter input,.session-message-filter select{min-width:0}.session-filter-count{grid-column:1/-1;color:var(--muted);font-size:12px}.message-select{display:inline-flex;align-items:center;gap:6px;margin-right:7px;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}.message-select input{width:18px;min-height:18px;margin:0;accent-color:var(--accent)}.range-select{margin-right:7px;padding:5px 8px;border:1px solid #cabdcd;border-radius:8px;background:#fff;color:var(--accent);font-size:11px;font-weight:800}.message.copy-selected{border-color:var(--accent);box-shadow:0 4px 18px #4d38511f}.message.selection-anchor{box-shadow:inset 4px 0 var(--accent),0 4px 18px #4d38511f}.message.saved-selection{background:#fff7dc;border-color:#d9bd67;box-shadow:inset 5px 0 #d9bd67}.message.user.saved-selection{background:#f4e8c8}.message-copy-bar{position:sticky;bottom:14px;z-index:15;margin:24px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.message-copy-actions{display:flex;gap:8px;flex-wrap:wrap}.message-copy-actions button{padding:10px 13px;border:1px solid #a58cab;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.message-copy-actions .copy-cancel{background:transparent;color:#fff}.saved-selection-nav{margin:14px 0 20px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#f8f3f8}.saved-selection-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.saved-selection-head strong{font-size:13px}.saved-selection-head span{font-size:11px;color:var(--muted)}.saved-selection-list{display:flex;gap:7px;flex-wrap:wrap}.saved-selection-list button{border:1px solid #cabdcd;border-radius:999px;background:#fff;color:var(--accent);padding:8px 11px;font-weight:800}.saved-selection-list button.active{border-color:#d0ad42;background:#fff2bc;color:#674f0e}.saved-selection-actions{display:flex;justify-content:flex-end;margin-top:9px}.saved-selection-actions button{border:1px solid #e2b8c1;border-radius:10px;background:#fff;color:#a13b50;padding:7px 10px}.message-label-wrap{display:flex;align-items:baseline;gap:8px;min-width:0}.message-time{color:var(--muted);font-size:10px;letter-spacing:0;white-space:nowrap}.memory-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border:1px solid var(--line);border-radius:15px;background:#fff;text-align:left}.memory-card:hover{border-color:#d0ad42;box-shadow:0 5px 18px #8a6b1820}.memory-card strong{display:block;margin-bottom:4px;color:var(--ink)}.memory-card small{display:block;color:var(--muted);line-height:1.45}.memory-card .memory-mark{font-size:24px;color:#b88e19}.memory-list{display:grid;gap:9px}.memory-entry{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}.memory-entry>button:first-child{width:100%;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left}.memory-entry>button:first-child:hover{border-color:#d0ad42}.memory-entry strong,.memory-entry small{display:block}.memory-entry small{margin-top:4px;color:var(--muted)}.memory-entry .memory-copy,.memory-entry .memory-delete{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:800}.memory-entry .memory-copy{color:var(--accent)}.memory-entry .memory-delete{border-color:#e2b8c1;color:#a13b50}.folder-persona-setting{display:flex;align-items:center;gap:10px;margin-top:8px}.folder-persona-setting label{font-size:12px;font-weight:800;color:var(--muted)}.folder-persona-setting select{width:auto;min-width:180px}@media(max-width:760px){.session-message-filter{grid-template-columns:1fr}.session-filter-count{grid-column:1}.message-copy-bar{bottom:76px;align-items:stretch;flex-direction:column}.message-copy-actions{display:grid;grid-template-columns:1fr 1fr}.message-copy-actions .copy-cancel{grid-column:1/-1}.folder-persona-setting{align-items:stretch;flex-direction:column}.folder-persona-setting select{width:100%}.message-head>span:last-child{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:3px}.message-head{align-items:flex-start}.message-label-wrap{align-items:flex-start;flex-direction:column;gap:1px}.memory-entry{grid-template-columns:1fr 1fr}.memory-entry>button:first-child{grid-column:1/-1}.memory-entry .memory-copy,.memory-entry .memory-delete{width:100%}}`;
 document.head.append(messageCopyStyle);
@@ -124,6 +127,7 @@ let all = [],
   messageSelected = new Set(),
   messageSelectionAnchor = "",
   activeNamedSelection = "",
+  memoDraft = null,
   settings = {
     userName: "あなた",
     assistantName: "ChatGPT",
@@ -261,6 +265,7 @@ function merge(incoming) {
     fresh.namedSelections = Array.isArray(old.namedSelections)
       ? old.namedSelections
       : [];
+    fresh.notes = Array.isArray(old.notes) ? old.notes : [];
     delete fresh.trashedAt;
     delete fresh.originalFolder;
     byId.set(fresh.id, fresh);
@@ -308,6 +313,7 @@ async function load() {
       s.namedSelections = Array.isArray(s.namedSelections)
         ? s.namedSelections
         : [];
+      s.notes = Array.isArray(s.notes) ? s.notes : [];
     });
   } catch (err) {
     console.error(err);
@@ -594,19 +600,48 @@ function renderMarkdown(text) {
   if (codeLines.length) html += `<pre><code>${esc(codeLines.join("\n"))}</code></pre>`;
   return html;
 }
+function renderMemoText(text) {
+  const linked = String(text ?? "").replace(
+    /(^|\s)(https?:\/\/[^\s<]+)/g,
+    (whole, prefix, url) => `${prefix}[${url}](${url})`,
+  );
+  return renderMarkdown(linked);
+}
+function memoDate(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ja-JP", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+function renderNotesAfter(s, anchorId) {
+  s.notes = Array.isArray(s.notes) ? s.notes : [];
+  return s.notes
+    .filter((note) => (note.anchorId || null) === (anchorId || null))
+    .map((note) => `<aside class="memo-card" id="note-${esc(note.id)}"><div class="memo-head"><span><span class="memo-label">編纂メモ</span>${note.createdAt ? ` <time class="memo-date">${esc(memoDate(note.createdAt))}</time>` : ""}</span><span class="memo-actions"><button data-memo-move="up" data-note-id="${esc(note.id)}" title="一つ前の位置へ">↑</button><button data-memo-move="down" data-note-id="${esc(note.id)}" title="一つ後の位置へ">↓</button><button data-note-edit="${esc(note.id)}">編集</button><button data-note-delete="${esc(note.id)}">削除</button></span></div><div class="markdown-body">${renderMemoText(note.text)}</div></aside>`)
+    .join("");
+}
+function openMemoEditor(s, anchorId = null, note = null) {
+  memoDraft = { sessionId: s.id, anchorId: anchorId || null, noteId: note?.id || null };
+  $("memoEditorTitle").textContent = note ? "メモを編集" : "メモを挿入";
+  $("memoText").value = note?.text || "";
+  $("memoEditor").showModal();
+  setTimeout(() => $("memoText").focus(), 0);
+}
 function renderSessionPanel(){const p=$("sessionPanel"),s=all.find(x=>x.id===selected);if(!p)return;if(!s){p.innerHTML='<p class="muted">セッションを開くと使えます。</p>';return}s.namedSelections=Array.isArray(s.namedSelections)?s.namedSelections:[];const n=messageSelected.size,shown=visibleMessages(s),q=sessionMessageQuery.trim().toLowerCase(),hitCount=shown.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!q||includesAllTerms(m.text, q))).length,filtering=Boolean(q||sessionModelFilter);p.innerHTML=`<div class="session-panel-head"><strong>このセッション</strong><button id="closeSessionPanel" aria-label="閉じる">×</button></div><div class="session-panel-grid"><button id="sessionTop" class="session-panel-action">↑ 最上部</button><button id="sessionBottom" class="session-panel-action">↓ 最下部</button><button id="panelCopy" class="session-panel-action primary" ${n?"":"disabled"}>コピー（${n}）</button><button id="panelSaveMemory" class="session-panel-action primary" ${n?"":"disabled"}>思い出保存</button></div><div class="session-panel-section"><label>セッション内発言検索<input id="panelSessionSearch" type="search" value="${esc(sessionMessageQuery)}" placeholder="発言本文を検索"></label><label>モデル絞り込み<select id="panelModelFilter"><option value="">すべてのモデル</option>${s.models.map(x=>`<option value="${esc(x)}" ${x===sessionModelFilter?"selected":""}>${esc(x)}</option>`).join("")}</select></label><label class="session-panel-check"><input id="panelIncludePrevious" type="checkbox" ${sessionIncludePrevious?"checked":""} ${sessionModelFilter?"":"disabled"}>直前の入力も表示</label><span id="panelFilterCount" class="session-panel-count">${filtering?`${hitCount} / ${shown.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。"}</span><button id="panelShowResults" class="session-panel-result" ${filtering?"":"disabled"}>検索結果を見る</button></div><div class="session-panel-section"><strong>このセッション内の思い出（${s.namedSelections.length}）</strong><div class="session-panel-memories">${s.namedSelections.length?s.namedSelections.map(x=>`<button class="session-panel-memory" data-panel-memory="${esc(x.id)}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join(""):'<span class="session-panel-count">まだ保存されていません。</span>'}</div></div><div class="session-panel-section"><button id="focusModeBtn" class="session-panel-action">UI非表示で全画面表示</button></div>`;
 $("closeSessionPanel").onclick=closeSessionPanel;$("sessionTop").onclick=()=>scrollSessionEdge(false);$("sessionBottom").onclick=()=>scrollSessionEdge(true);$("panelCopy").onclick=()=>$("copyMessages")?.click();$("panelSaveMemory").onclick=()=>$("saveNamedSelection")?.click();$("panelShowResults").onclick=()=>{closeSessionPanel();requestAnimationFrame(()=>document.querySelector(".conversation .message")?.scrollIntoView({behavior:"smooth",block:"start"}))};const panelSearch=$("panelSessionSearch");let panelSearchComposing=false;const applyPanelSearch=()=>{const value=panelSearch.value;if(value===sessionMessageQuery)return;sessionMessageQuery=value;renderViewer({updatePanel:false});const current=all.find(x=>x.id===selected),messages=current?visibleMessages(current):[],needle=sessionMessageQuery.trim().toLowerCase(),count=messages.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!needle||includesAllTerms(m.text, needle))).length,filteringNow=Boolean(needle||sessionModelFilter),status=$("panelFilterCount"),show=$("panelShowResults");if(status)status.textContent=filteringNow?`${count} / ${messages.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。";if(show)show.disabled=!filteringNow};panelSearch.oncompositionstart=()=>{panelSearchComposing=true};panelSearch.oncompositionend=()=>{panelSearchComposing=false;queueMicrotask(applyPanelSearch)};panelSearch.oninput=e=>{if(panelSearchComposing||e.isComposing)return;applyPanelSearch()};$("panelModelFilter").onchange=e=>{sessionModelFilter=e.target.value;if(!sessionModelFilter)sessionIncludePrevious=false;renderViewer();};$("panelIncludePrevious").onchange=e=>{sessionIncludePrevious=e.target.checked;renderViewer();};document.querySelectorAll("[data-panel-memory]").forEach(b=>b.onclick=()=>{const m=s.namedSelections.find(x=>x.id===b.dataset.panelMemory);activeNamedSelection=m?.id||"";sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();const first=m?.messageIds.find(id=>visibleMessages(s).some(x=>x.id===id));if(first)setTimeout(()=>$("msg-"+first)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});$("focusModeBtn").onclick=()=>{closeSessionPanel();closeSidebar();document.body.classList.add("focus-mode")}}
 function renderViewer({updatePanel=true}={}) {
   const s = all.find((x) => x.id === selected);
   if (!s) return;
   s.namedSelections = Array.isArray(s.namedSelections) ? s.namedSelections : [];
+  s.notes = Array.isArray(s.notes) ? s.notes : [];
   const q=sessionMessageQuery.trim(),model=sessionModelFilter,allShown=visibleMessages(s),directMatches=allShown.filter(m=>(!model||(m.role==="assistant"&&m.model===model))&&(!q||includesAllTerms(m.text, q))),contextIds=new Set(directMatches.map(m=>m.id)),shown=(()=>{if(model&&sessionIncludePrevious)directMatches.forEach(m=>{const i=allShown.findIndex(x=>x.id===m.id);for(let j=i-1;j>=0;j--)if(allShown[j].role==="user"){contextIds.add(allShown[j].id);break}});return allShown.filter(m=>contextIds.has(m.id))})(),
     chosen = shown.filter((m) => messageSelected.has(m.id)),
     active = s.namedSelections.find((x) => x.id === activeNamedSelection),
     activeIds = new Set(active?.messageIds || []),
     folderFixed = settings.folderPersonas[s.folder || "未分類"] || "";
   $("viewer").innerHTML =
-    `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="deleteNamedSelection">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
+    `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="addTopMemo">＋ 冒頭にメモ</button><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="deleteNamedSelection">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
       .map(
         (x) =>
           `<option ${x === s.persona ? "selected" : ""}>${esc(x)}</option>`,
@@ -619,7 +654,7 @@ function renderViewer({updatePanel=true}={}) {
       )
       .join(
         "",
-      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}${m.role === "assistant" ? " · " + esc(m.model || "モデル不明") : ""}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)&&m.role==="assistant"?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">タイトルをつけて保存</button><button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
+      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${!q&&!model?renderNotesAfter(s,null):""}${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}${m.role === "assistant" ? " · " + esc(m.model || "モデル不明") : ""}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)&&m.role==="assistant"?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>${!q&&!model?`<button class="add-memo-after" data-add-memo-after="${esc(m.id)}">＋ この位置にメモ</button>${renderNotesAfter(s,m.id)}`:""}`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">タイトルをつけて保存</button><button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
       .filter((m) => m.hidden)
       .map(
         (m) =>
@@ -627,6 +662,38 @@ function renderViewer({updatePanel=true}={}) {
       )
       .join("")}</details></article>`;
   if(updatePanel)renderSessionPanel();
+  $("addTopMemo").onclick = () => openMemoEditor(s, null);
+  document.querySelectorAll("[data-add-memo-after]").forEach(
+    (button) => (button.onclick = () => openMemoEditor(s, button.dataset.addMemoAfter)),
+  );
+  document.querySelectorAll("[data-note-edit]").forEach(
+    (button) => (button.onclick = () => {
+      const note = s.notes.find((item) => item.id === button.dataset.noteEdit);
+      if (note) openMemoEditor(s, note.anchorId, note);
+    }),
+  );
+  document.querySelectorAll("[data-note-delete]").forEach(
+    (button) => (button.onclick = async () => {
+      const note = s.notes.find((item) => item.id === button.dataset.noteDelete);
+      if (!note || !confirm("このメモを削除しますか？")) return;
+      s.notes = s.notes.filter((item) => item.id !== note.id);
+      await save();
+      renderViewer();
+    }),
+  );
+  document.querySelectorAll("[data-memo-move]").forEach(
+    (button) => (button.onclick = async () => {
+      const note = s.notes.find((item) => item.id === button.dataset.noteId);
+      if (!note) return;
+      const anchors = [null, ...visibleMessages(s).map((message) => message.id)];
+      const current = Math.max(0, anchors.indexOf(note.anchorId || null));
+      const delta = button.dataset.memoMove === "up" ? -1 : 1;
+      note.anchorId = anchors[Math.max(0, Math.min(anchors.length - 1, current + delta))];
+      await save();
+      renderViewer();
+      setTimeout(() => $("note-" + note.id)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    }),
+  );
   const rerenderKeepingPosition = () => {
     const viewerTop = $("viewer").scrollTop,
       pageTop = window.scrollY;
@@ -915,6 +982,7 @@ function exportSession(s) {
     persona: effectivePersona(s),
     folder: s.folder,
     named_selections: s.namedSelections || [],
+    notes: s.notes || [],
     messages: s.messages
       .filter((m) => !m.hidden)
       .map((m) => ({
@@ -1389,6 +1457,32 @@ $("newPersona").onkeydown = (e) => {
     addCustom("persona");
   }
 };
+$("saveMemo").onclick = async (event) => {
+  event.preventDefault();
+  const text = $("memoText").value.trim();
+  const draft = memoDraft;
+  if (!text || !draft) return;
+  const session = all.find((item) => item.id === draft.sessionId);
+  if (!session) return;
+  session.notes = Array.isArray(session.notes) ? session.notes : [];
+  const existing = session.notes.find((item) => item.id === draft.noteId);
+  if (existing) {
+    existing.text = text;
+    existing.updatedAt = Date.now();
+  } else {
+    session.notes.push({
+      id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      anchorId: draft.anchorId || null,
+      text,
+      createdAt: Date.now(),
+    });
+  }
+  memoDraft = null;
+  $("memoEditor").close();
+  await save();
+  renderViewer();
+};
+$("memoEditor").addEventListener("close", () => { memoDraft = null; });
 $("saveSettings").onclick = () => {
   settings = {
     ...settings,

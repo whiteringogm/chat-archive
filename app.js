@@ -119,6 +119,7 @@ const STORE = "seishi-archive-v2",
 let all = [],
   selected = "",
   currentFolder = "",
+  currentMemoryFolder = "",
   viewMode = "folders",
   sessionMessageQuery = "",
   sessionModelFilter = "",
@@ -313,6 +314,9 @@ async function load() {
       s.namedSelections = Array.isArray(s.namedSelections)
         ? s.namedSelections
         : [];
+      s.namedSelections.forEach((memory) => {
+        if (!memory.folder) memory.folder = s.folder || "未分類";
+      });
       s.notes = Array.isArray(s.notes) ? s.notes : [];
     });
   } catch (err) {
@@ -823,6 +827,7 @@ function renderViewer({updatePanel=true}={}) {
       const item = {
         id: `range-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         title: title.trim(),
+        folder: s.folder || "未分類",
         messageIds: shown
           .filter((m) => messageSelected.has(m.id))
           .map((m) => m.id),
@@ -1190,6 +1195,9 @@ function memoryItems() {
     )
     .sort((a, b) => b.session.time - a.session.time);
 }
+function memoryFolder(session, memory) {
+  return memory.folder || session.folder || "未分類";
+}
 function noteItems() {
   return activeSessions()
     .flatMap((session) =>
@@ -1231,6 +1239,16 @@ function renderNotes() {
 function showMemories() {
   selected = "";
   currentFolder = "";
+  currentMemoryFolder = "";
+  bulkSelected.clear();
+  viewMode = "memories";
+  renderList();
+  renderViewer();
+}
+function showMemoryFolder(folder) {
+  selected = "";
+  currentFolder = "";
+  currentMemoryFolder = folder;
   bulkSelected.clear();
   viewMode = "memories";
   renderList();
@@ -1291,9 +1309,27 @@ function openMemory(sessionId, memoryId) {
 function renderMemories() {
   const items = memoryItems();
   $("viewer").scrollTop = 0;
+  if (!currentMemoryFolder) {
+    const folders = [...new Set(items.map(({ session, memory }) => memoryFolder(session, memory)))]
+      .sort((a, b) => a.localeCompare(b, "ja"));
+    $("viewer").innerHTML =
+      `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">思い出を保存したときのセッションフォルダごとに並びます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="folder-grid">${folders.map((folder) => {
+        const count = items.filter(({ session, memory }) => memoryFolder(session, memory) === folder).length;
+        return `<button class="folder-card" data-memory-folder="${esc(folder)}"><span class="folder-icon">✦</span><strong>${esc(folder)}</strong><span>${count} 件の思い出</span></button>`;
+      }).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;
+    $("backToFolders").onclick = showFolders;
+    document.querySelectorAll("[data-memory-folder]").forEach(
+      (button) => (button.onclick = () => showMemoryFolder(button.dataset.memoryFolder)),
+    );
+    return;
+  }
+  const folderItems = items.filter(
+    ({ session, memory }) => memoryFolder(session, memory) === currentMemoryFolder,
+  );
   $("viewer").innerHTML =
-    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">保存したタイトルを選ぶと元の会話へ移動し、「まるごとコピー」で範囲全文を持ち出せます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="memory-list">${items.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${esc(session.folder || "未分類")} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;
+    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">保存したタイトルを選ぶと元の会話へ移動し、「まるごとコピー」で範囲全文を持ち出せます。</p></div><span class="count-badge">${folderItems.length} 件</span></div><div class="memory-list">${folderItems.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
   $("backToFolders").onclick = showFolders;
+  $("backToMemories").onclick = showMemories;
   document
     .querySelectorAll("[data-open-memory]")
     .forEach(

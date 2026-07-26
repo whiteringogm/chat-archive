@@ -357,6 +357,17 @@ function date(t) {
       }).format(new Date(t * 1000))
     : "日時不明";
 }
+function memoryDate(s, memory) {
+  const ids = new Set(memory?.messageIds || []);
+  const first = s?.messages?.find((message) => ids.has(message.id));
+  if (!first?.time) return "";
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(first.time * 1000));
+}
 function messageDate(t) {
   return t
     ? new Intl.DateTimeFormat("ja-JP", {
@@ -1281,7 +1292,7 @@ function renderMemories() {
   const items = memoryItems();
   $("viewer").scrollTop = 0;
   $("viewer").innerHTML =
-    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">保存したタイトルを選ぶと元の会話へ移動し、「まるごとコピー」で範囲全文を持ち出せます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="memory-list">${items.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}</strong><small>${esc(replaceText(session.title))} · ${esc(session.folder || "未分類")} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;
+    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">保存したタイトルを選ぶと元の会話へ移動し、「まるごとコピー」で範囲全文を持ち出せます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="memory-list">${items.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${esc(session.folder || "未分類")} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;
   $("backToFolders").onclick = showFolders;
   document
     .querySelectorAll("[data-open-memory]")
@@ -1298,7 +1309,9 @@ function renderMemories() {
           (x) => x.id === button.dataset.copyMemory,
         );
         if (!memory) return;
-        const text = copyTextForIds(session, memory.messageIds);
+        const memoryDay = memoryDate(session, memory);
+        const heading = [memory.title, memoryDay].filter(Boolean).join(" ");
+        const text = `${heading}\n\n${copyTextForIds(session, memory.messageIds)}`;
         await copyToClipboard(text);
         const count = session.messages.filter(
           (message) =>

@@ -1196,7 +1196,7 @@ function memoryItems() {
     .sort((a, b) => b.session.time - a.session.time);
 }
 function memoryFolder(session, memory) {
-  return memory.folder || session.folder || "未分類";
+  return session.folder || "未分類";
 }
 function noteItems() {
   return activeSessions()
@@ -1313,7 +1313,7 @@ function renderMemories() {
     const folders = [...new Set(items.map(({ session, memory }) => memoryFolder(session, memory)))]
       .sort((a, b) => a.localeCompare(b, "ja"));
     $("viewer").innerHTML =
-      `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">思い出を保存したときのセッションフォルダごとに並びます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="folder-grid">${folders.map((folder) => {
+      `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>思い出一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>思い出一覧</h2><p class="muted">元セッションの現在のフォルダごとに並びます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="folder-grid">${folders.map((folder) => {
         const count = items.filter(({ session, memory }) => memoryFolder(session, memory) === folder).length;
         return `<button class="folder-card" data-memory-folder="${esc(folder)}"><span class="folder-icon">✦</span><strong>${esc(folder)}</strong><span>${count} 件の思い出</span></button>`;
       }).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;

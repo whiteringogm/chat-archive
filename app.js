@@ -1034,15 +1034,37 @@ function exportSession(s) {
 function copyTextOf(s) {
   return copyTextForIds(s, messageSelected);
 }
+function messageDay(t) {
+  return t
+    ? new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(t * 1000))
+    : "";
+}
 function copyTextForIds(s, messageIds) {
   const ids = new Set(messageIds);
   const parts = [];
+  const messages = s.messages.filter((m) => !m.hidden);
+  let previousIndex = -1;
+  let previousDay = "";
   (s.notes || []).filter((note) => !note.anchorId).forEach((note) => {
-    if (ids.size === visibleMessages(s).length) parts.push(`【編纂メモ】\n${replaceText(note.text)}`);
+    if (ids.size === messages.length) parts.push(`【編纂メモ】\n${replaceText(note.text)}`);
   });
-  s.messages.filter((m) => !m.hidden && ids.has(m.id)).forEach((m) => {
+  messages.forEach((m, index) => {
+    if (!ids.has(m.id)) return;
+    const day = messageDay(m.time);
+    const hasGap = previousIndex >= 0 && index > previousIndex + 1;
+    const dayChanged = previousIndex >= 0 && day && day !== previousDay;
+    if (hasGap || dayChanged) {
+      parts.push(dayChanged ? `---\n${day}` : "---");
+    }
     parts.push(`${nameOf(m, s)}${m.role === "assistant" ? `・${m.model || "モデル不明"}` : ""}：\n${replaceText(m.text)}`);
     (s.notes || []).filter((note) => note.anchorId === m.id).forEach((note) => parts.push(`【編纂メモ】\n${replaceText(note.text)}`));
+    previousIndex = index;
+    previousDay = day;
   });
   return parts.join("\n\n");
 }

@@ -90,7 +90,7 @@ function closeSidebar() {
 }
 ["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo", "excludeKeyword", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
   $(id).addEventListener(
-    id === "search" ? "input" : "change",
+    id === "search" || id === "excludeKeyword" ? "input" : "change",
     (e) => {
       e.stopImmediatePropagation();
       renderList();
@@ -1329,6 +1329,8 @@ function openSession(id, { inheritSearch = false } = {}) {
   const inheritedQuery =
     inheritSearch && searchMode === "body" ? $("unifiedSearch").value.trim() : "";
   selected = id;
+  searchSessionId = id;
+  $("searchModeSession").disabled = false;
   sessionMessageQuery = inheritedQuery;
   sessionModelFilter = "";
   sessionIncludePrevious = false;
@@ -1775,7 +1777,7 @@ $("titleSearch").addEventListener("input", () => {
   renderList();
 });
 ["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo", "excludeKeyword", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
-  $(id).addEventListener(id === "search" ? "input" : "change", () => {
+  $(id).addEventListener(id === "search" || id === "excludeKeyword" ? "input" : "change", () => {
     renderList();
   }),
 );

@@ -8,7 +8,7 @@ const bulkStyle = document.createElement("style");
 bulkStyle.textContent = `.browser-session-row{display:grid;grid-template-columns:auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:15px;background:#fff;overflow:hidden}.browser-session-row.selected{border-color:var(--accent);background:#f7f0f8;box-shadow:0 4px 18px #4d385118}.browser-session-row .browser-session{border:0;border-radius:0;background:transparent}.session-check{display:grid;place-items:center;width:50px;border-right:1px solid var(--line);cursor:pointer}.session-check input{position:absolute;opacity:0;pointer-events:none}.session-check span{width:22px;height:22px;border:2px solid #b6a9b8;border-radius:7px;background:#fff}.session-check input:checked+span{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 4px #fff}.select-all{padding:9px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--accent);font-weight:800}.has-bulk-bar{padding-bottom:100px}.bulk-move-bar{position:sticky;bottom:14px;z-index:10;margin:22px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.bulk-move-controls{display:flex;align-items:center;gap:8px}.bulk-move-controls select{min-width:170px;border:0}.bulk-move-controls button{padding:10px 13px;border:0;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.bulk-move-controls .bulk-delete{background:#b9475e;color:#fff}.bulk-move-controls .bulk-cancel{background:transparent;color:#fff;border:1px solid #a58cab}.bulk-move-controls button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.bulk-move-bar{align-items:stretch;flex-direction:column;bottom:76px}.bulk-move-controls{display:grid;grid-template-columns:1fr auto auto}.bulk-move-controls .bulk-cancel{grid-column:1/-1}.session-check{width:46px}}`;
 document.head.append(bulkStyle);
 const titleSearchStyle = document.createElement("style");
-titleSearchStyle.textContent = `.unified-search{margin-bottom:9px}.search-mode{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}.search-mode button{min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--muted);font-size:11px;font-weight:800}.search-mode button.active{border-color:var(--accent);background:var(--accent);color:#fff}.search-label{display:block;margin-bottom:9px;color:var(--muted);font-size:12px;font-weight:800}.search-label input{margin-top:4px}.search-select-all{width:100%;margin-bottom:9px;padding:9px 12px;border:1px solid var(--accent);border-radius:11px;background:#fff;color:var(--accent);font-weight:800}.search-session{display:grid;grid-template-columns:auto 1fr;padding:0;overflow:hidden}.search-session>div{padding:13px;min-width:0}.search-session .session-check{width:42px}.search-bulk-bar{position:sticky;bottom:0;z-index:12;margin-top:10px;padding:11px;border-radius:14px;background:#261f2df2;color:#fff;box-shadow:0 8px 24px #0004}.search-bulk-bar strong{display:block;margin-bottom:8px}.search-bulk-controls{display:grid;grid-template-columns:1fr auto;gap:7px}.search-bulk-controls select{min-width:0;border:0}.search-bulk-controls button{padding:9px;border:0;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.search-bulk-controls .bulk-cancel{grid-column:1/-1;background:transparent;color:#fff;border:1px solid #a58cab}.sessions,.session,.search-session>div{min-width:0;max-width:100%}.session{overflow:hidden}.session strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.filters select{min-width:0;font-size:12px;padding-inline:9px}@media(max-width:380px){.filters select{font-size:11px;padding-inline:7px}}`;
+titleSearchStyle.textContent = `.unified-search{margin-bottom:9px}.search-mode{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:7px}.search-mode button{min-width:0;padding:7px 5px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--muted);font-size:10px;font-weight:800}.search-mode button.active{border-color:var(--accent);background:var(--accent);color:#fff}.search-mode button:disabled{opacity:.38}.search-label{display:block;margin-bottom:9px;color:var(--muted);font-size:12px;font-weight:800}.search-label input{margin-top:4px}.filter-help{margin:2px 0 5px;color:var(--muted);font-size:10px}.filters select[multiple]{height:82px;padding:5px;font-size:11px}.exclude-filters{margin:10px 0;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--card)}.exclude-filters summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:800}.exclude-filters label{display:block;margin:9px 0 6px;color:var(--muted);font-size:11px;font-weight:800}.exclude-filters .filters{margin-top:6px}.clear-filters{width:100%;margin-bottom:8px;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--muted);font-size:11px}.search-trail{display:flex;align-items:center;gap:7px;margin:8px 0;padding:8px 10px;border-radius:10px;background:#f5f0f5;font-size:11px}.search-trail button{border:0;background:transparent;color:var(--accent);font-weight:800}.search-message{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.search-message+.search-message{margin-top:7px}.search-message small{display:block;margin-bottom:5px;color:var(--muted)}.search-message .open-message{width:100%;margin-top:8px;padding:8px;border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;font-weight:800}.search-select-all{width:100%;margin-bottom:9px;padding:9px 12px;border:1px solid var(--accent);border-radius:11px;background:#fff;color:var(--accent);font-weight:800}.search-session{display:grid;grid-template-columns:auto 1fr;padding:0;overflow:hidden}.search-session>div{padding:13px;min-width:0}.search-session .session-check{width:42px}.search-bulk-bar{position:sticky;bottom:0;z-index:12;margin-top:10px;padding:11px;border-radius:14px;background:#261f2df2;color:#fff;box-shadow:0 8px 24px #0004}.search-bulk-bar strong{display:block;margin-bottom:8px}.search-bulk-controls{display:grid;grid-template-columns:1fr auto;gap:7px}.search-bulk-controls select{min-width:0;border:0}.search-bulk-controls button{padding:9px;border:0;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.search-bulk-controls .bulk-cancel{grid-column:1/-1;background:transparent;color:#fff;border:1px solid #a58cab}.sessions,.session,.search-session>div{min-width:0;max-width:100%}.session{overflow:hidden}.session strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media(max-width:380px){.filters select{font-size:10px}}`;
 document.head.append(titleSearchStyle);
 const searchDateStyle = document.createElement("style");
 searchDateStyle.textContent = `.search-period{margin:0 0 10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--card)}.search-period>span{display:block;margin-bottom:7px;color:var(--muted);font-size:12px;font-weight:800}.search-period-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px}.search-period label{min-width:0;color:var(--muted);font-size:10px;font-weight:750}.search-period input{min-width:0;margin-top:3px;padding:8px 7px;font-size:12px}@media(max-width:380px){.search-period-fields{grid-template-columns:1fr}.search-period input{font-size:11px}}`;
@@ -33,31 +33,34 @@ const memoryPickerStyle = document.createElement("style");
 memoryPickerStyle.textContent = `.memory-picker-list{display:grid;gap:8px;max-height:min(58dvh,520px);overflow:auto}.memory-picker-item{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:left}.memory-picker-item strong,.memory-picker-item small{display:block}.memory-picker-item small{margin-top:4px;color:var(--muted)}#memoryPicker{width:min(520px,calc(100vw - 28px))}`;
 document.head.append(memoryPickerStyle);
 const $ = (id) => document.getElementById(id);
-let searchMode = "body";
+let searchMode = "body", searchSessionId = "";
 function setSearchMode(mode) {
   const current = $("unifiedSearch").value;
+  if (mode === "session" && !selected && !searchSessionId) return;
   searchMode = mode;
   $("titleSearch").value = mode === "title" ? current : "";
-  $("search").value = mode === "body" ? current : "";
+  $("search").value = mode === "body" || mode === "session" ? current : "";
   $("searchModeTitle").classList.toggle("active", mode === "title");
   $("searchModeBody").classList.toggle("active", mode === "body");
+  $("searchModeSession").classList.toggle("active", mode === "session");
   $("searchModeTitle").setAttribute("aria-pressed", String(mode === "title"));
   $("searchModeBody").setAttribute("aria-pressed", String(mode === "body"));
-  $("searchLabelText").textContent = mode === "title" ? "セッション名検索" : "発言本文検索";
-  $("unifiedSearch").placeholder = mode === "title" ? "例：🌕まんちゃん" : "発言本文も検索";
+  $("searchModeSession").setAttribute("aria-pressed", String(mode === "session"));
+  $("searchLabelText").textContent = mode === "title" ? "セッションタイトル検索" : mode === "session" ? "現在のセッション内検索" : "全体の発言検索";
+  $("unifiedSearch").placeholder = mode === "title" ? "例：🌕まんちゃん" : "発言本文を検索";
   if (mode !== "title") bulkSelected.clear();
   renderList();
-  renderViewer();
 }
 $("unifiedSearch").addEventListener("input", () => {
   $("titleSearch").value = searchMode === "title" ? $("unifiedSearch").value : "";
-  $("search").value = searchMode === "body" ? $("unifiedSearch").value : "";
+  $("search").value = searchMode === "body" || searchMode === "session" ? $("unifiedSearch").value : "";
   if (searchMode === "title" && !$("unifiedSearch").value.trim()) bulkSelected.clear();
   renderList();
   renderViewer();
 });
 $("searchModeTitle").onclick = () => setSearchMode("title");
 $("searchModeBody").onclick = () => setSearchMode("body");
+$("searchModeSession").onclick = () => setSearchMode("session");
 const esc = (s) =>
     String(s ?? "").replace(
       /[&<>"']/g,
@@ -85,7 +88,7 @@ function closeSidebar() {
   else document.body.classList.add("sidebar-collapsed");
   $("menuBtn").setAttribute("aria-expanded", "false");
 }
-["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo"].forEach((id) =>
+["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo", "excludeKeyword", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
   $(id).addEventListener(
     id === "search" ? "input" : "change",
     (e) => {
@@ -95,6 +98,13 @@ function closeSidebar() {
     true,
   ),
 );
+$("clearFilters").onclick = () => {
+  ["model", "persona", "folder", "speaker", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
+    [...$(id).options].forEach((option) => { option.selected = false; }),
+  );
+  ["dateFrom", "dateTo", "excludeKeyword"].forEach((id) => { $(id).value = ""; });
+  renderList();
+};
 $("menuBtn").onclick = () => {
   const open = matchMedia("(max-width:760px)").matches
     ? document.body.classList.contains("sidebar-open")
@@ -424,11 +434,13 @@ function messageDate(t) {
 function visibleMessages(s) {
   return s.messages.filter((m) => !m.hidden);
 }
-function messageMatchesFilters(x, model, speaker) {
+const selectedValues = (id) => [...$(id).selectedOptions].map((o) => o.value).filter(Boolean);
+const hasAny = (values, value) => !values.length || values.includes(value);
+function messageMatchesFilters(x, models, speakers) {
   return (
     !x.hidden &&
-    (!model || (x.role === "assistant" && x.model === model)) &&
-    (!speaker || x.role === speaker)
+    (!models.length || (x.role === "assistant" && models.includes(x.model))) &&
+    hasAny(speakers, x.role)
   );
 }
 function searchTerms(q) {
@@ -451,26 +463,35 @@ function sessionInDateRange(s) {
 function filtered() {
   const tq = $("titleSearch").value.trim(),
     q = $("search").value.trim(),
-    m = $("model").value,
-    p = $("persona").value,
-    f = $("folder").value,
-    speaker = $("speaker").value;
+    models = selectedValues("model"),
+    personas = selectedValues("persona"),
+    folders = selectedValues("folder"),
+    speakers = selectedValues("speaker"),
+    excludedModels = selectedValues("excludeModel"),
+    excludedPersonas = selectedValues("excludePersona"),
+    excludedFolders = selectedValues("excludeFolder"),
+    excludedSpeakers = selectedValues("excludeSpeaker"),
+    excludedTerms = searchTerms($("excludeKeyword").value);
   return all.filter(
     (s) =>
       !s.trashedAt &&
       sessionInDateRange(s) &&
+      (searchMode !== "session" || s.id === (searchSessionId || selected)) &&
       (!tq || includesAllTerms(s.title, tq)) &&
-      (!m || s.models.includes(m)) &&
-      (!p || effectivePersona(s) === p) &&
-      (!f || s.folder === f) &&
-      (!speaker ||
-        s.messages.some((x) => messageMatchesFilters(x, m, speaker))) &&
-      (!q ||
-        (!m && !speaker && includesAllTerms(s.title, q)) ||
+      (!models.length || s.models.some((m) => models.includes(m))) &&
+      hasAny(personas, effectivePersona(s)) &&
+      hasAny(folders, s.folder || "未分類") &&
+      !excludedPersonas.includes(effectivePersona(s)) &&
+      !excludedFolders.includes(s.folder || "未分類") &&
+      (!speakers.length || s.messages.some((x) => messageMatchesFilters(x, models, speakers))) &&
+      ((!q && !excludedTerms.length && !excludedModels.length && !excludedSpeakers.length) ||
         s.messages.some(
           (x) =>
-            messageMatchesFilters(x, m, speaker) &&
-            includesAllTerms(x.text, q),
+            messageMatchesFilters(x, models, speakers) &&
+            !excludedSpeakers.includes(x.role) &&
+            !(x.role === "assistant" && excludedModels.includes(x.model)) &&
+            !excludedTerms.some((term) => replaceText(x.text).toLowerCase().includes(term)) &&
+            (!q || includesAllTerms(x.text, q)),
         )),
   );
 }
@@ -480,17 +501,23 @@ function activeSessions() {
 function matchInfo(s, q) {
   if (!q) return { count: 0, preview: "" };
   const terms = searchTerms(q),
-    model = $("model").value,
-    speaker = $("speaker").value,
+    models = selectedValues("model"),
+    speakers = selectedValues("speaker"),
+    excludedModels = selectedValues("excludeModel"),
+    excludedSpeakers = selectedValues("excludeSpeaker"),
+    excludedTerms = searchTerms($("excludeKeyword").value),
     hits = s.messages.filter(
       (x) =>
-        messageMatchesFilters(x, model, speaker) &&
+        messageMatchesFilters(x, models, speakers) &&
+        !excludedSpeakers.includes(x.role) &&
+        !(x.role === "assistant" && excludedModels.includes(x.model)) &&
+        !excludedTerms.some((term) => replaceText(x.text).toLowerCase().includes(term)) &&
         includesAllTerms(x.text, q),
     ),
     first = hits[0];
   if (!first)
     return {
-      count: !model && !speaker && includesAllTerms(s.title, q) ? 1 : 0,
+      count: 0,
       preview: "タイトルに一致",
     };
   const text = replaceText(first.text),
@@ -549,6 +576,35 @@ function renderList() {
       rows.every((s) => bulkSelected.has(s.id));
   $("summary").textContent =
     `${rows.length} / ${activeSessions().length} セッション · ${activeSessions().reduce((n, s) => n + s.messages.filter((m) => !m.hidden).length, 0)} 発言`;
+  $("searchTrail").innerHTML = searchMode === "session" && rows[0]
+    ? `<div class="search-trail"><button id="backToGlobalResults">‹ 全体の結果</button><span>${esc(replaceText(rows[0].title))}</span></div>`
+    : "";
+  if (searchMode === "session") {
+    const s = rows[0], hit = s ? matchInfo(s, q) : { hits: [] };
+    const models = selectedValues("model"), speakers = selectedValues("speaker"),
+      excludedModels = selectedValues("excludeModel"), excludedSpeakers = selectedValues("excludeSpeaker"),
+      excludedTerms = searchTerms($("excludeKeyword").value);
+    const messages = s ? s.messages.filter((m) =>
+      messageMatchesFilters(m, models, speakers) &&
+      !excludedSpeakers.includes(m.role) &&
+      !(m.role === "assistant" && excludedModels.includes(m.model)) &&
+      !excludedTerms.some((term) => replaceText(m.text).toLowerCase().includes(term)) &&
+      (!q || includesAllTerms(m.text, q))) : [];
+    $("summary").textContent = s ? `${messages.length} / ${visibleMessages(s).length} 発言` : "セッションを開いてください。";
+    $("sessions").innerHTML = messages.map((m) =>
+      `<article class="search-message"><small>${esc(nameOf(m, s))} · ${esc(messageDate(m.time))}</small><div>${q ? mark(replaceText(m.text).slice(0,240), q) : esc(replaceText(m.text).slice(0,240))}</div><button class="open-message" data-session-id="${esc(s.id)}" data-message-id="${esc(m.id)}">元の位置へ</button></article>`
+    ).join("") || '<p class="muted">該当する発言がありません。</p>';
+    $("backToGlobalResults")?.addEventListener("click", () => setSearchMode("body"));
+    document.querySelectorAll(".open-message").forEach((b) => b.onclick = () => {
+      openSession(b.dataset.sessionId);
+      sessionMessageQuery = "";
+      renderViewer();
+      setTimeout(() => $("msg-" + b.dataset.messageId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+      closeSidebar();
+    });
+    renderSearchBulk();
+    return;
+  }
   $("sessions").innerHTML =
     (selectable && rows.length
       ? `<button id="toggleAllSearchResults" class="search-select-all">${allVisibleSelected ? `検索結果 ${rows.length}件の選択を解除` : `検索結果 ${rows.length}件をすべて選択`}</button>`
@@ -556,7 +612,7 @@ function renderList() {
     (rows
       .map((s) => {
         const hit = matchInfo(s, q),
-          content = `<strong>${tq ? mark(s.title, tq) : esc(replaceText(s.title))}</strong><div class="session-meta">${esc(date(s.time))} · ${esc(effectivePersona(s))} · ${s.messages.filter((m) => !m.hidden).length}件${q ? ` · ${hit.count}件一致` : ""}</div>${q ? `<div class="match-preview">${mark(hit.preview, q)}</div>` : ""}<button class="open-session" data-id="${esc(s.id)}">このセッションを開く</button>`;
+          content = `<strong>${tq ? mark(s.title, tq) : esc(replaceText(s.title))}</strong><div class="session-meta">${esc(date(s.time))} · ${esc(effectivePersona(s))} · ${s.messages.filter((m) => !m.hidden).length}件${q ? ` · ${hit.count}件一致` : ""}</div>${q ? `<div class="match-preview">${mark(hit.preview, q)}</div>` : ""}<button class="open-session" data-id="${esc(s.id)}">${searchMode === "body" ? "このセッション内の結果" : "このセッションを開く"}</button>`;
         return selectable
           ? `<article class="session search-session ${bulkSelected.has(s.id) ? "active" : ""}"><label class="session-check" aria-label="${esc(replaceText(s.title))}を選択"><input type="checkbox" data-search-select-id="${esc(s.id)}" ${bulkSelected.has(s.id) ? "checked" : ""}><span></span></label><div>${content}</div></article>`
           : `<article class="session ${s.id === selected ? "active" : ""}">${content}</article>`;
@@ -571,7 +627,14 @@ function renderList() {
     };
   document
     .querySelectorAll(".open-session")
-    .forEach((b) => (b.onclick = () => openSession(b.dataset.id, { inheritSearch: true })));
+    .forEach((b) => (b.onclick = () => {
+      if (searchMode === "body") {
+        searchSessionId = b.dataset.id;
+        openSession(b.dataset.id);
+        setSearchMode("session");
+        openSidebar();
+      } else openSession(b.dataset.id);
+    }));
   document.querySelectorAll("[data-search-select-id]").forEach(
     (c) =>
       (c.onchange = () => {
@@ -1045,29 +1108,16 @@ function folderOptions() {
   ];
 }
 function rebuildFilters() {
-  const m = $("model").value,
-    f = $("folder").value,
-    p = $("persona").value;
-  $("model").innerHTML =
-    '<option value="">すべてのモデル</option>' +
-    [...new Set(activeSessions().flatMap((x) => x.models))]
-      .sort()
-      .map((x) => `<option>${esc(x)}</option>`)
-      .join("");
-  $("model").value = m;
-  $("folder").innerHTML =
-    '<option value="">すべてのフォルダ</option>' +
-    folderOptions()
-      .sort()
-      .map((x) => `<option>${esc(x)}</option>`)
-      .join("");
-  $("folder").value = f;
-  $("persona").innerHTML =
-    '<option value="">すべてのペルソナ</option>' +
-    personaOptions()
-      .map((x) => `<option>${esc(x)}</option>`)
-      .join("");
-  $("persona").value = p;
+  const fill = (ids, values) => {
+    ids.forEach((id) => {
+      const previous = new Set(selectedValues(id));
+      $(id).innerHTML = values.map((x) => `<option ${previous.has(x) ? "selected" : ""}>${esc(x)}</option>`).join("");
+    });
+  };
+  fill(["model", "excludeModel"], [...new Set(activeSessions().flatMap((x) => x.models))].sort());
+  fill(["folder", "excludeFolder"], folderOptions().sort());
+  fill(["persona", "excludePersona"], personaOptions());
+  $("searchModeSession").disabled = !selected && !searchSessionId;
 }
 function renderManagers() {
   $("folderChips").innerHTML =
@@ -1724,10 +1774,9 @@ $("titleSearch").addEventListener("input", () => {
   if (!$("titleSearch").value.trim()) bulkSelected.clear();
   renderList();
 });
-["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo"].forEach((id) =>
+["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo", "excludeKeyword", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
   $(id).addEventListener(id === "search" ? "input" : "change", () => {
     renderList();
-    renderViewer();
   }),
 );
 $("settingsBtn").onclick = () => {

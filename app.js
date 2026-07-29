@@ -32,6 +32,9 @@ document.head.append(messageCopyStyle);
 const memoryPickerStyle = document.createElement("style");
 memoryPickerStyle.textContent = `.memory-picker-list{display:grid;gap:8px;max-height:min(58dvh,520px);overflow:auto}.memory-picker-item{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:left}.memory-picker-item strong,.memory-picker-item small{display:block}.memory-picker-item small{margin-top:4px;color:var(--muted)}#memoryPicker{width:min(520px,calc(100vw - 28px))}`;
 document.head.append(memoryPickerStyle);
+const memoryExportStyle = document.createElement("style");
+memoryExportStyle.textContent = `.memory-list{gap:14px}.memory-entry{display:block;padding:16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--card) 78%,var(--paper));box-shadow:0 5px 18px #0000000b}.memory-entry-main{width:100%;padding:0 0 14px!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;background:transparent!important;text-align:left}.memory-entry-main:hover strong{color:var(--accent)}.memory-entry-title{display:block;color:var(--ink);font-size:18px;line-height:1.4}.memory-entry-meta{display:block;margin-top:6px;color:var(--muted);font-size:13px;line-height:1.45}.memory-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:12px}.memory-actions button{min-height:40px;padding:8px 7px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--muted);font-size:12px;font-weight:800}.memory-actions .memory-preview{border-color:var(--accent);color:var(--accent)}.memory-actions .memory-delete{border-color:#9b5866;color:#d994a3}.memory-folder-export{display:flex;justify-content:flex-end;margin:0 0 14px}.memory-folder-export button{padding:10px 14px;border:1px solid var(--accent);border-radius:11px;background:var(--accent);color:#fff;font-weight:800}.preview-kicker{margin:0 0 3px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.12em}.memory-preview-text{max-height:min(62dvh,620px);overflow:auto;margin:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}#memoryPreview{width:min(680px,calc(100vw - 24px))}@media(max-width:760px){.memory-entry{padding:14px}.memory-entry-title{font-size:17px}.memory-actions{grid-template-columns:1fr 1fr}.memory-actions .memory-delete{grid-column:2}.memory-actions button{width:100%}}`;
+document.head.append(memoryExportStyle);
 const $ = (id) => document.getElementById(id);
 let searchMode = "body", searchSessionId = "";
 function setSearchMode(mode) {
@@ -1389,6 +1392,157 @@ function memoryTimestamp(session, memory) {
 function memoryFolder(session, memory) {
   return session.folder || "未分類";
 }
+function memoryCopyText(session, memory) {
+  const heading = [memory.title, memoryDate(session, memory)]
+    .filter(Boolean)
+    .join(" ");
+  return `${heading}\n\n${copyTextForIds(session, memory.messageIds)}`;
+}
+function memoryExportPayload(session, memory) {
+  const ids = new Set(memory.messageIds || []);
+  return {
+    format: "seishi-memory",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    memory: {
+      id: memory.id,
+      title: memory.title,
+      date: memoryDate(session, memory) || null,
+      folder: memoryFolder(session, memory),
+      messageIds: [...ids],
+    },
+    sourceSession: {
+      id: session.id,
+      title: session.title,
+      createdAt: session.time || null,
+      folder: memoryFolder(session, memory),
+      persona: session.persona || "未分類",
+    },
+    messages: session.messages
+      .filter((message) => ids.has(message.id) && !message.hidden)
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        speaker: nameOf(message, session),
+        model: message.model || null,
+        createdAt: message.time || null,
+        text: message.text,
+      })),
+  };
+}
+function exportMemoryJson(session, memory) {
+  const day = memoryDate(session, memory);
+  download(
+    `${safeName(memory.title)}${day ? `_${day}` : ""}.json`,
+    JSON.stringify(memoryExportPayload(session, memory), null, 2),
+    "application/json",
+  );
+}
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++)
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function zipNumber(view, offset, value, bytes) {
+  if (bytes === 2) view.setUint16(offset, value, true);
+  else view.setUint32(offset, value, true);
+}
+function makeZip(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  const now = new Date();
+  const dosTime =
+    (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate =
+    ((now.getFullYear() - 1980) << 9) |
+    ((now.getMonth() + 1) << 5) |
+    now.getDate();
+  files.forEach(({ name, text }) => {
+    const fileName = encoder.encode(name);
+    const data = encoder.encode(text);
+    const checksum = crc32(data);
+    const local = new Uint8Array(30 + fileName.length + data.length);
+    const localView = new DataView(local.buffer);
+    zipNumber(localView, 0, 0x04034b50, 4);
+    zipNumber(localView, 4, 20, 2);
+    zipNumber(localView, 6, 0x0800, 2);
+    zipNumber(localView, 10, dosTime, 2);
+    zipNumber(localView, 12, dosDate, 2);
+    zipNumber(localView, 14, checksum, 4);
+    zipNumber(localView, 18, data.length, 4);
+    zipNumber(localView, 22, data.length, 4);
+    zipNumber(localView, 26, fileName.length, 2);
+    local.set(fileName, 30);
+    local.set(data, 30 + fileName.length);
+    localParts.push(local);
+
+    const central = new Uint8Array(46 + fileName.length);
+    const centralView = new DataView(central.buffer);
+    zipNumber(centralView, 0, 0x02014b50, 4);
+    zipNumber(centralView, 4, 20, 2);
+    zipNumber(centralView, 6, 20, 2);
+    zipNumber(centralView, 8, 0x0800, 2);
+    zipNumber(centralView, 12, dosTime, 2);
+    zipNumber(centralView, 14, dosDate, 2);
+    zipNumber(centralView, 16, checksum, 4);
+    zipNumber(centralView, 20, data.length, 4);
+    zipNumber(centralView, 24, data.length, 4);
+    zipNumber(centralView, 28, fileName.length, 2);
+    zipNumber(centralView, 42, localOffset, 4);
+    central.set(fileName, 46);
+    centralParts.push(central);
+    localOffset += local.length;
+  });
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  zipNumber(endView, 0, 0x06054b50, 4);
+  zipNumber(endView, 8, files.length, 2);
+  zipNumber(endView, 10, files.length, 2);
+  zipNumber(endView, 12, centralSize, 4);
+  zipNumber(endView, 16, localOffset, 4);
+  return new Blob([...localParts, ...centralParts, end], {
+    type: "application/zip",
+  });
+}
+function exportMemoryFolderZip(folder, items) {
+  const usedNames = new Map();
+  const files = items.map(({ session, memory }) => {
+    const day = memoryDate(session, memory);
+    const base = `${safeName(memory.title)}${day ? `_${day}` : ""}`;
+    const count = (usedNames.get(base) || 0) + 1;
+    usedNames.set(base, count);
+    return {
+      name: `${base}${count > 1 ? `_${count}` : ""}.json`,
+      text: JSON.stringify(memoryExportPayload(session, memory), null, 2),
+    };
+  });
+  download(
+    `${safeName(folder)}_思い出_${new Date().toISOString().slice(0, 10)}.zip`,
+    makeZip(files),
+    "application/zip",
+  );
+}
+function showMemoryPreview(session, memory) {
+  const text = memoryCopyText(session, memory);
+  $("memoryPreviewTitle").textContent = memory.title;
+  $("memoryPreviewText").textContent = text;
+  $("copyMemoryPreview").onclick = async () => {
+    await copyToClipboard(text);
+    $("copyMemoryPreview").textContent = "コピーしました";
+    setTimeout(() => {
+      if ($("copyMemoryPreview"))
+        $("copyMemoryPreview").textContent = "テキストをコピー";
+    }, 1400);
+  };
+  $("memoryPreview").showModal();
+}
 function noteItems() {
   return activeSessions()
     .flatMap((session) =>
@@ -1522,7 +1676,7 @@ function renderMemories() {
     ({ session, memory }) => memoryFolder(session, memory) === currentMemoryFolder,
   );
   $("viewer").innerHTML =
-    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">思い出に含まれる最初の発言日時が新しい順に並びます。</p></div><span class="count-badge">${folderItems.length} 件</span></div><div class="memory-list">${folderItems.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-edit" data-edit-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">内容編集</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
+    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">思い出に含まれる最初の発言日時が新しい順に並びます。</p></div><span class="count-badge">${folderItems.length} 件</span></div>${folderItems.length ? '<div class="memory-folder-export"><button id="exportMemoryFolderZip">フォルダをZIP出力</button></div>' : ""}<div class="memory-list">${folderItems.map(({ session, memory }) => `<article class="memory-entry"><button class="memory-entry-main" data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong class="memory-entry-title">${esc(memory.title)}${memoryDate(session, memory) ? ` <span>${esc(memoryDate(session, memory))}</span>` : ""}</strong><small class="memory-entry-meta">${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><div class="memory-actions"><button class="memory-preview" data-preview-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">プレビュー</button><button class="memory-json" data-json-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">JSON出力</button><button class="memory-edit" data-edit-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">内容編集</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div></article>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
   $("backToFolders").onclick = showFolders;
   $("backToMemories").onclick = showMemories;
   document
@@ -1532,23 +1686,28 @@ function renderMemories() {
         (button.onclick = () =>
           openMemory(button.dataset.sessionId, button.dataset.openMemory)),
     );
-  document.querySelectorAll("[data-copy-memory]").forEach(
+  $("exportMemoryFolderZip")?.addEventListener("click", () =>
+    exportMemoryFolderZip(currentMemoryFolder, folderItems),
+  );
+  document.querySelectorAll("[data-preview-memory]").forEach(
     (button) =>
-      (button.onclick = async () => {
+      (button.onclick = () => {
         const session = all.find((x) => x.id === button.dataset.sessionId);
         const memory = session?.namedSelections?.find(
-          (x) => x.id === button.dataset.copyMemory,
+          (x) => x.id === button.dataset.previewMemory,
         );
         if (!memory) return;
-        const memoryDay = memoryDate(session, memory);
-        const heading = [memory.title, memoryDay].filter(Boolean).join(" ");
-        const text = `${heading}\n\n${copyTextForIds(session, memory.messageIds)}`;
-        await copyToClipboard(text);
-        const count = session.messages.filter(
-          (message) =>
-            !message.hidden && memory.messageIds.includes(message.id),
-        ).length;
-        alert(`思い出「${memory.title}」の${count}件をコピーしました。`);
+        showMemoryPreview(session, memory);
+      }),
+  );
+  document.querySelectorAll("[data-json-memory]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        const session = all.find((x) => x.id === button.dataset.sessionId);
+        const memory = session?.namedSelections?.find(
+          (x) => x.id === button.dataset.jsonMemory,
+        );
+        if (memory) exportMemoryJson(session, memory);
       }),
   );
   document.querySelectorAll("[data-edit-memory]").forEach(

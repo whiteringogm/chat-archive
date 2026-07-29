@@ -29,6 +29,9 @@ document.head.append(memoStyle);
 const messageCopyStyle = document.createElement("style");
 messageCopyStyle.textContent = `.session-message-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.55fr);gap:9px;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}.session-message-filter input,.session-message-filter select{min-width:0}.session-filter-count{grid-column:1/-1;color:var(--muted);font-size:12px}.message-select{display:inline-flex;align-items:center;gap:6px;margin-right:7px;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}.message-select input{width:18px;min-height:18px;margin:0;accent-color:var(--accent)}.range-select{margin-right:7px;padding:5px 8px;border:1px solid #cabdcd;border-radius:8px;background:#fff;color:var(--accent);font-size:11px;font-weight:800}.message.copy-selected{border-color:var(--accent);box-shadow:0 4px 18px #4d38511f}.message.selection-anchor{box-shadow:inset 4px 0 var(--accent),0 4px 18px #4d38511f}.message.saved-selection{background:#fff7dc;border-color:#d9bd67;box-shadow:inset 5px 0 #d9bd67}.message.user.saved-selection{background:#f4e8c8}.message-copy-bar{position:sticky;bottom:14px;z-index:15;margin:24px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.message-copy-actions{display:flex;gap:8px;flex-wrap:wrap}.message-copy-actions button{padding:10px 13px;border:1px solid #a58cab;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.message-copy-actions .copy-cancel{background:transparent;color:#fff}.saved-selection-nav{margin:14px 0 20px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#f8f3f8}.saved-selection-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.saved-selection-head strong{font-size:13px}.saved-selection-head span{font-size:11px;color:var(--muted)}.saved-selection-list{display:flex;gap:7px;flex-wrap:wrap}.saved-selection-list button{border:1px solid #cabdcd;border-radius:999px;background:#fff;color:var(--accent);padding:8px 11px;font-weight:800}.saved-selection-list button.active{border-color:#d0ad42;background:#fff2bc;color:#674f0e}.saved-selection-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:9px}.saved-selection-actions button{border:1px solid #cabdcd;border-radius:10px;background:#fff;color:var(--accent);padding:7px 10px}.saved-selection-actions .memory-remove{border-color:#e2b8c1;color:#a13b50}.message-label-wrap{display:flex;align-items:baseline;gap:8px;min-width:0}.message-time{color:var(--muted);font-size:10px;letter-spacing:0;white-space:nowrap}.memory-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border:1px solid var(--line);border-radius:15px;background:#fff;text-align:left}.memory-card:hover{border-color:#d0ad42;box-shadow:0 5px 18px #8a6b1820}.memory-card strong{display:block;margin-bottom:4px;color:var(--ink)}.memory-card small{display:block;color:var(--muted);line-height:1.45}.memory-card .memory-mark{font-size:24px;color:#b88e19}.memory-list{display:grid;gap:9px}.memory-entry{display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center}.memory-entry>button:first-child{width:100%;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left}.memory-entry>button:first-child:hover{border-color:#d0ad42}.memory-entry strong,.memory-entry small{display:block}.memory-entry small{margin-top:4px;color:var(--muted)}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename,.memory-entry .memory-delete{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:800}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename{color:var(--accent)}.memory-entry .memory-delete{border-color:#e2b8c1;color:#a13b50}.note-list{display:grid;gap:10px}.note-entry{padding:14px 16px;border:1px solid #cbb99d;border-left:5px solid #b99762;border-radius:13px;background:#fff9e9}.note-entry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:7px}.note-entry-head button{padding:7px 10px;border:1px solid #d7c8ae;border-radius:9px;background:#fffdf7;color:#765a32;font-weight:800}.note-entry small{display:block;color:var(--muted)}body.dark .note-entry{border-color:#6d5b43;border-left-color:#c8a66d;background:#2d281d}body.dark .note-entry-head button{border-color:#695b43;background:#2a241b;color:#e4c890}.folder-persona-setting{display:flex;align-items:center;gap:10px;margin-top:8px}.folder-persona-setting label{font-size:12px;font-weight:800;color:var(--muted)}.folder-persona-setting select{width:auto;min-width:180px}@media(max-width:760px){.session-message-filter{grid-template-columns:1fr}.session-filter-count{grid-column:1}.message-copy-bar{bottom:76px;align-items:stretch;flex-direction:column}.message-copy-actions{display:grid;grid-template-columns:1fr 1fr}.message-copy-actions .copy-cancel{grid-column:1/-1}.folder-persona-setting{align-items:stretch;flex-direction:column}.folder-persona-setting select{width:100%}.message-head>span:last-child{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:3px}.message-head{align-items:flex-start}.message-label-wrap{align-items:flex-start;flex-direction:column;gap:1px}.memory-entry{grid-template-columns:1fr 1fr}.memory-entry>button:first-child{grid-column:1/-1}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename,.memory-entry .memory-delete{width:100%}}`;
 document.head.append(messageCopyStyle);
+const memoryPickerStyle = document.createElement("style");
+memoryPickerStyle.textContent = `.memory-picker-list{display:grid;gap:8px;max-height:min(58dvh,520px);overflow:auto}.memory-picker-item{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:left}.memory-picker-item strong,.memory-picker-item small{display:block}.memory-picker-item small{margin-top:4px;color:var(--muted)}#memoryPicker{width:min(520px,calc(100vw - 28px))}`;
+document.head.append(memoryPickerStyle);
 const $ = (id) => document.getElementById(id);
 let searchMode = "body";
 function setSearchMode(mode) {
@@ -128,6 +131,7 @@ let all = [],
   messageSelected = new Set(),
   messageSelectionAnchor = "",
   editingMemoryId = "",
+  viewportRestoreToken = 0,
   navigationBackStack = [],
   activeNamedSelection = "",
   memoDraft = null,
@@ -373,6 +377,38 @@ function memoryDate(s, memory) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(first.time * 1000));
+}
+function openMemoryPicker(session) {
+  const memories = session.namedSelections || [];
+  if (!memories.length) return;
+  const pickedIds = [...messageSelected];
+  $("memoryPickerSummary").textContent =
+    `選択中の${pickedIds.length}件を、どの思い出へ追加しますか？`;
+  $("memoryPickerList").innerHTML = memories
+    .map((memory) => {
+      const day = memoryDate(session, memory);
+      return `<button type="button" class="memory-picker-item" data-pick-memory="${esc(memory.id)}"><strong>${esc(memory.title)}</strong><small>${day ? `${esc(day)} · ` : ""}${memory.messageIds.length}件</small></button>`;
+    })
+    .join("");
+  document.querySelectorAll("[data-pick-memory]").forEach((button) => {
+    button.onclick = async () => {
+      const target = memories.find((memory) => memory.id === button.dataset.pickMemory);
+      if (!target) return;
+      const ids = new Set(target.messageIds);
+      pickedIds.forEach((id) => ids.add(id));
+      target.messageIds = session.messages
+        .filter((message) => !message.hidden && ids.has(message.id))
+        .map((message) => message.id);
+      activeNamedSelection = target.id;
+      messageSelected.clear();
+      messageSelectionAnchor = "";
+      $("memoryPicker").close();
+      await save();
+      renderViewer();
+      alert(`思い出「${target.title}」へ追加しました。`);
+    };
+  });
+  $("memoryPicker").showModal();
 }
 function messageDate(t) {
   return t
@@ -713,28 +749,53 @@ function renderViewer({updatePanel=true}={}) {
     }),
   );
   const rerenderKeepingPosition = (anchorId) => {
+    const restoreToken = ++viewportRestoreToken;
     const anchorTop = anchorId
         ? $("msg-" + anchorId)?.getBoundingClientRect().top
         : null,
       viewerTop = $("viewer").scrollTop,
       pageTop = window.scrollY;
+    document.activeElement?.blur?.();
+    document.documentElement.style.overflowAnchor = "none";
+    document.body.style.overflowAnchor = "none";
     renderViewer();
+    let stableFrames = 0;
     const restorePosition = () => {
+      if (restoreToken !== viewportRestoreToken) return true;
       const nextAnchor = anchorId ? $("msg-" + anchorId) : null;
       if (Number.isFinite(anchorTop) && nextAnchor) {
         const delta = nextAnchor.getBoundingClientRect().top - anchorTop;
+        if (Math.abs(delta) < 0.5) stableFrames += 1;
+        else stableFrames = 0;
         if (matchMedia("(max-width:760px)").matches) window.scrollBy(0, delta);
         else $("viewer").scrollTop += delta;
       } else {
         $("viewer").scrollTop = viewerTop;
         window.scrollTo(0, pageTop);
       }
+      return stableFrames >= 3;
     };
-    requestAnimationFrame(() => {
-      restorePosition();
-      requestAnimationFrame(restorePosition);
-    });
-    setTimeout(restorePosition, 80);
+    let frames = 0;
+    const followLayout = () => {
+      const stable = restorePosition();
+      frames += 1;
+      if (!stable && frames < 18) requestAnimationFrame(followLayout);
+      else if (restoreToken === viewportRestoreToken) {
+        document.documentElement.style.overflowAnchor = "";
+        document.body.style.overflowAnchor = "";
+      }
+    };
+    requestAnimationFrame(followLayout);
+    [100, 250, 500].forEach((delay) =>
+      setTimeout(() => {
+        if (restoreToken !== viewportRestoreToken) return;
+        restorePosition();
+        if (delay === 500) {
+          document.documentElement.style.overflowAnchor = "";
+          document.body.style.overflowAnchor = "";
+        }
+      }, delay),
+    );
   };
   $("sessionPersona").onchange = (e) => {
     s.persona = e.target.value;
@@ -853,27 +914,7 @@ function renderViewer({updatePanel=true}={}) {
       renderViewer();
     };
   if ($("appendNamedSelection"))
-    $("appendNamedSelection").onclick = async () => {
-      const choices = s.namedSelections
-        .map((memory, index) => `${index + 1}. ${memory.title}`)
-        .join("\n");
-      const answer = prompt(
-        `追加先の番号を入力してください。\n\n${choices}`,
-      );
-      const target = s.namedSelections[Number(answer) - 1];
-      if (!target) return;
-      const ids = new Set(target.messageIds);
-      messageSelected.forEach((id) => ids.add(id));
-      target.messageIds = s.messages
-        .filter((m) => !m.hidden && ids.has(m.id))
-        .map((m) => m.id);
-      activeNamedSelection = target.id;
-      messageSelected.clear();
-      messageSelectionAnchor = "";
-      await save();
-      renderViewer();
-      alert(`思い出「${target.title}」へ追加しました。`);
-    };
+    $("appendNamedSelection").onclick = () => openMemoryPicker(s);
   if ($("saveNamedSelection"))
     $("saveNamedSelection").onclick = async () => {
       if (editingMemoryId) {

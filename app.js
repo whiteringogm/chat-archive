@@ -27,7 +27,7 @@ const memoStyle = document.createElement("style");
 memoStyle.textContent = `.memo-card{position:relative;margin:-4px 4% 10px;padding:7px 34px 7px 10px;border:0;border-radius:7px;background:#d9f4c9;color:#253326;box-shadow:0 2px 8px #58844918;line-height:1.35;overflow-wrap:anywhere}.memo-card .markdown-body{font-size:14px}.memo-card .markdown-body p{margin:0;white-space:pre-wrap}.memo-card .markdown-body>*+*{margin-top:.2em}.memo-card a{color:#385b7d;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}.memo-menu{position:absolute;top:4px;right:5px}.memo-menu summary{display:grid;place-items:center;width:25px;height:25px;border-radius:999px;color:#5e7957;font-size:15px;font-weight:900;line-height:1;list-style:none;cursor:pointer;opacity:.55}.memo-menu summary::-webkit-details-marker{display:none}.memo-menu summary:hover,.memo-menu[open] summary{background:#fff9;opacity:1}.memo-actions{position:absolute;z-index:4;top:30px;right:0;display:flex;gap:4px;padding:5px;border:1px solid #b8d6a9;border-radius:9px;background:#f8fff3;box-shadow:0 7px 20px #2533262b}.memo-actions button,.add-memo-after{min-height:auto;padding:5px 8px;border:1px solid #c7dcbf;border-radius:8px;background:#fff;color:#506d49;font-size:11px;font-weight:800}.add-memo-after{display:block;margin:-5px auto 14px;opacity:.72}.add-memo-after:hover{opacity:1}body.dark .memo-card{background:#31452e;color:#edf6e9;box-shadow:none}body.dark .memo-card a{color:#b9d8ff}body.dark .memo-menu summary{color:#c5dcbf}body.dark .memo-menu summary:hover,body.dark .memo-menu[open] summary{background:#ffffff18}body.dark .memo-actions{border-color:#51684c;background:#222d20}body.dark .memo-actions button,body.dark .add-memo-after{border-color:#53684e;background:#2a3627;color:#d4e6cf}#memoEditor textarea{min-height:180px;resize:vertical}#memoEditor .memo-help{margin:0;color:var(--muted);font-size:12px}`;
 document.head.append(memoStyle);
 const messageCopyStyle = document.createElement("style");
-messageCopyStyle.textContent = `.session-message-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.55fr);gap:9px;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}.session-message-filter input,.session-message-filter select{min-width:0}.session-filter-count{grid-column:1/-1;color:var(--muted);font-size:12px}.message-select{display:inline-flex;align-items:center;gap:6px;margin-right:7px;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}.message-select input{width:18px;min-height:18px;margin:0;accent-color:var(--accent)}.range-select{margin-right:7px;padding:5px 8px;border:1px solid #cabdcd;border-radius:8px;background:#fff;color:var(--accent);font-size:11px;font-weight:800}.message.copy-selected{border-color:var(--accent);box-shadow:0 4px 18px #4d38511f}.message.selection-anchor{box-shadow:inset 4px 0 var(--accent),0 4px 18px #4d38511f}.message.saved-selection{background:#fff7dc;border-color:#d9bd67;box-shadow:inset 5px 0 #d9bd67}.message.user.saved-selection{background:#f4e8c8}.message-copy-bar{position:sticky;bottom:14px;z-index:15;margin:24px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.message-copy-actions{display:flex;gap:8px;flex-wrap:wrap}.message-copy-actions button{padding:10px 13px;border:1px solid #a58cab;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.message-copy-actions .copy-cancel{background:transparent;color:#fff}.saved-selection-nav{margin:14px 0 20px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#f8f3f8}.saved-selection-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.saved-selection-head strong{font-size:13px}.saved-selection-head span{font-size:11px;color:var(--muted)}.saved-selection-list{display:flex;gap:7px;flex-wrap:wrap}.saved-selection-list button{border:1px solid #cabdcd;border-radius:999px;background:#fff;color:var(--accent);padding:8px 11px;font-weight:800}.saved-selection-list button.active{border-color:#d0ad42;background:#fff2bc;color:#674f0e}.saved-selection-actions{display:flex;justify-content:flex-end;margin-top:9px}.saved-selection-actions button{border:1px solid #e2b8c1;border-radius:10px;background:#fff;color:#a13b50;padding:7px 10px}.message-label-wrap{display:flex;align-items:baseline;gap:8px;min-width:0}.message-time{color:var(--muted);font-size:10px;letter-spacing:0;white-space:nowrap}.memory-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border:1px solid var(--line);border-radius:15px;background:#fff;text-align:left}.memory-card:hover{border-color:#d0ad42;box-shadow:0 5px 18px #8a6b1820}.memory-card strong{display:block;margin-bottom:4px;color:var(--ink)}.memory-card small{display:block;color:var(--muted);line-height:1.45}.memory-card .memory-mark{font-size:24px;color:#b88e19}.memory-list{display:grid;gap:9px}.memory-entry{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center}.memory-entry>button:first-child{width:100%;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left}.memory-entry>button:first-child:hover{border-color:#d0ad42}.memory-entry strong,.memory-entry small{display:block}.memory-entry small{margin-top:4px;color:var(--muted)}.memory-entry .memory-copy,.memory-entry .memory-rename,.memory-entry .memory-delete{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:800}.memory-entry .memory-copy,.memory-entry .memory-rename{color:var(--accent)}.memory-entry .memory-delete{border-color:#e2b8c1;color:#a13b50}.note-list{display:grid;gap:10px}.note-entry{padding:14px 16px;border:1px solid #cbb99d;border-left:5px solid #b99762;border-radius:13px;background:#fff9e9}.note-entry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:7px}.note-entry-head button{padding:7px 10px;border:1px solid #d7c8ae;border-radius:9px;background:#fffdf7;color:#765a32;font-weight:800}.note-entry small{display:block;color:var(--muted)}body.dark .note-entry{border-color:#6d5b43;border-left-color:#c8a66d;background:#2d281d}body.dark .note-entry-head button{border-color:#695b43;background:#2a241b;color:#e4c890}.folder-persona-setting{display:flex;align-items:center;gap:10px;margin-top:8px}.folder-persona-setting label{font-size:12px;font-weight:800;color:var(--muted)}.folder-persona-setting select{width:auto;min-width:180px}@media(max-width:760px){.session-message-filter{grid-template-columns:1fr}.session-filter-count{grid-column:1}.message-copy-bar{bottom:76px;align-items:stretch;flex-direction:column}.message-copy-actions{display:grid;grid-template-columns:1fr 1fr}.message-copy-actions .copy-cancel{grid-column:1/-1}.folder-persona-setting{align-items:stretch;flex-direction:column}.folder-persona-setting select{width:100%}.message-head>span:last-child{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:3px}.message-head{align-items:flex-start}.message-label-wrap{align-items:flex-start;flex-direction:column;gap:1px}.memory-entry{grid-template-columns:1fr 1fr}.memory-entry>button:first-child{grid-column:1/-1}.memory-entry .memory-copy,.memory-entry .memory-rename,.memory-entry .memory-delete{width:100%}}`;
+messageCopyStyle.textContent = `.session-message-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.55fr);gap:9px;margin:0 0 18px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}.session-message-filter input,.session-message-filter select{min-width:0}.session-filter-count{grid-column:1/-1;color:var(--muted);font-size:12px}.message-select{display:inline-flex;align-items:center;gap:6px;margin-right:7px;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}.message-select input{width:18px;min-height:18px;margin:0;accent-color:var(--accent)}.range-select{margin-right:7px;padding:5px 8px;border:1px solid #cabdcd;border-radius:8px;background:#fff;color:var(--accent);font-size:11px;font-weight:800}.message.copy-selected{border-color:var(--accent);box-shadow:0 4px 18px #4d38511f}.message.selection-anchor{box-shadow:inset 4px 0 var(--accent),0 4px 18px #4d38511f}.message.saved-selection{background:#fff7dc;border-color:#d9bd67;box-shadow:inset 5px 0 #d9bd67}.message.user.saved-selection{background:#f4e8c8}.message-copy-bar{position:sticky;bottom:14px;z-index:15;margin:24px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.message-copy-actions{display:flex;gap:8px;flex-wrap:wrap}.message-copy-actions button{padding:10px 13px;border:1px solid #a58cab;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.message-copy-actions .copy-cancel{background:transparent;color:#fff}.saved-selection-nav{margin:14px 0 20px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#f8f3f8}.saved-selection-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.saved-selection-head strong{font-size:13px}.saved-selection-head span{font-size:11px;color:var(--muted)}.saved-selection-list{display:flex;gap:7px;flex-wrap:wrap}.saved-selection-list button{border:1px solid #cabdcd;border-radius:999px;background:#fff;color:var(--accent);padding:8px 11px;font-weight:800}.saved-selection-list button.active{border-color:#d0ad42;background:#fff2bc;color:#674f0e}.saved-selection-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:9px}.saved-selection-actions button{border:1px solid #cabdcd;border-radius:10px;background:#fff;color:var(--accent);padding:7px 10px}.saved-selection-actions .memory-remove{border-color:#e2b8c1;color:#a13b50}.message-label-wrap{display:flex;align-items:baseline;gap:8px;min-width:0}.message-time{color:var(--muted);font-size:10px;letter-spacing:0;white-space:nowrap}.memory-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border:1px solid var(--line);border-radius:15px;background:#fff;text-align:left}.memory-card:hover{border-color:#d0ad42;box-shadow:0 5px 18px #8a6b1820}.memory-card strong{display:block;margin-bottom:4px;color:var(--ink)}.memory-card small{display:block;color:var(--muted);line-height:1.45}.memory-card .memory-mark{font-size:24px;color:#b88e19}.memory-list{display:grid;gap:9px}.memory-entry{display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center}.memory-entry>button:first-child{width:100%;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left}.memory-entry>button:first-child:hover{border-color:#d0ad42}.memory-entry strong,.memory-entry small{display:block}.memory-entry small{margin-top:4px;color:var(--muted)}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename,.memory-entry .memory-delete{padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:800}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename{color:var(--accent)}.memory-entry .memory-delete{border-color:#e2b8c1;color:#a13b50}.note-list{display:grid;gap:10px}.note-entry{padding:14px 16px;border:1px solid #cbb99d;border-left:5px solid #b99762;border-radius:13px;background:#fff9e9}.note-entry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:7px}.note-entry-head button{padding:7px 10px;border:1px solid #d7c8ae;border-radius:9px;background:#fffdf7;color:#765a32;font-weight:800}.note-entry small{display:block;color:var(--muted)}body.dark .note-entry{border-color:#6d5b43;border-left-color:#c8a66d;background:#2d281d}body.dark .note-entry-head button{border-color:#695b43;background:#2a241b;color:#e4c890}.folder-persona-setting{display:flex;align-items:center;gap:10px;margin-top:8px}.folder-persona-setting label{font-size:12px;font-weight:800;color:var(--muted)}.folder-persona-setting select{width:auto;min-width:180px}@media(max-width:760px){.session-message-filter{grid-template-columns:1fr}.session-filter-count{grid-column:1}.message-copy-bar{bottom:76px;align-items:stretch;flex-direction:column}.message-copy-actions{display:grid;grid-template-columns:1fr 1fr}.message-copy-actions .copy-cancel{grid-column:1/-1}.folder-persona-setting{align-items:stretch;flex-direction:column}.folder-persona-setting select{width:100%}.message-head>span:last-child{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:3px}.message-head{align-items:flex-start}.message-label-wrap{align-items:flex-start;flex-direction:column;gap:1px}.memory-entry{grid-template-columns:1fr 1fr}.memory-entry>button:first-child{grid-column:1/-1}.memory-entry .memory-copy,.memory-entry .memory-edit,.memory-entry .memory-rename,.memory-entry .memory-delete{width:100%}}`;
 document.head.append(messageCopyStyle);
 const $ = (id) => document.getElementById(id);
 let searchMode = "body";
@@ -127,6 +127,8 @@ let all = [],
   bulkSelected = new Set(),
   messageSelected = new Set(),
   messageSelectionAnchor = "",
+  editingMemoryId = "",
+  navigationBackStack = [],
   activeNamedSelection = "",
   memoDraft = null,
   settings = {
@@ -656,7 +658,7 @@ function renderViewer({updatePanel=true}={}) {
     activeIds = new Set(active?.messageIds || []),
     folderFixed = settings.folderPersonas[s.folder || "未分類"] || "";
   $("viewer").innerHTML =
-    `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="addTopMemo">＋ 冒頭にメモ</button><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="renameNamedSelection">名前を変更</button><button id="deleteNamedSelection">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
+    `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="addTopMemo">＋ 冒頭にメモ</button><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="editNamedSelection">会話を追加・除去</button><button id="renameNamedSelection">名前を変更</button><button id="deleteNamedSelection" class="memory-remove">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
       .map(
         (x) =>
           `<option ${x === s.persona ? "selected" : ""}>${esc(x)}</option>`,
@@ -669,7 +671,7 @@ function renderViewer({updatePanel=true}={}) {
       )
       .join(
         "",
-      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${!q&&!model?renderNotesAfter(s,null):""}${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}${m.role === "assistant" ? " · " + esc(m.model || "モデル不明") : ""}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>${!q&&!model?`<button class="add-memo-after" data-add-memo-after="${esc(m.id)}">＋ この位置にメモ</button>${renderNotesAfter(s,m.id)}`:""}`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">タイトルをつけて保存</button><button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
+      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${!q&&!model?renderNotesAfter(s,null):""}${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}${m.role === "assistant" ? " · " + esc(m.model || "モデル不明") : ""}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>${!q&&!model?`<button class="add-memo-after" data-add-memo-after="${esc(m.id)}">＋ この位置にメモ</button>${renderNotesAfter(s,m.id)}`:""}`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${editingMemoryId ? "思い出を編集中 · " : ""}${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">${editingMemoryId ? "思い出の内容を更新" : "タイトルをつけて保存"}</button>${!editingMemoryId && s.namedSelections.length ? '<button id="appendNamedSelection">既存の思い出に追加</button>' : ""}<button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
       .filter((m) => m.hidden)
       .map(
         (m) =>
@@ -728,8 +730,11 @@ function renderViewer({updatePanel=true}={}) {
         window.scrollTo(0, pageTop);
       }
     };
-    restorePosition();
-    requestAnimationFrame(restorePosition);
+    requestAnimationFrame(() => {
+      restorePosition();
+      requestAnimationFrame(restorePosition);
+    });
+    setTimeout(restorePosition, 80);
   };
   $("sessionPersona").onchange = (e) => {
     s.persona = e.target.value;
@@ -780,7 +785,24 @@ function renderViewer({updatePanel=true}={}) {
         rerenderKeepingPosition(b.dataset.rangeMid);
       }),
   );
-  document.querySelectorAll("[data-jump-mid]").forEach(b=>b.onclick=()=>{const id=b.dataset.jumpMid;sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();setTimeout(()=>$("msg-"+id)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});
+  document.querySelectorAll("[data-jump-mid]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.jumpMid;
+    navigationBackStack.push({
+      selected,
+      viewMode,
+      sessionMessageQuery,
+      sessionModelFilter,
+      sessionIncludePrevious,
+      activeNamedSelection,
+      viewerScroll: $("viewer").scrollTop,
+      pageScroll: window.scrollY,
+    });
+    sessionMessageQuery="";
+    sessionModelFilter="";
+    sessionIncludePrevious=false;
+    renderViewer();
+    setTimeout(()=>$("msg-"+id)?.scrollIntoView({behavior:"smooth",block:"center"}),0)
+  });
   document.querySelectorAll("[data-memory-id]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -811,6 +833,16 @@ function renderViewer({updatePanel=true}={}) {
       await save();
       renderViewer();
     };
+  if ($("editNamedSelection"))
+    $("editNamedSelection").onclick = () => {
+      if (!active) return;
+      editingMemoryId = active.id;
+      messageSelected = new Set(active.messageIds);
+      messageSelectionAnchor = active.messageIds.at(-1) || "";
+      renderViewer();
+      const first = active.messageIds.find((id) => $("msg-" + id));
+      if (first) setTimeout(() => $("msg-" + first)?.scrollIntoView({ block: "center" }), 0);
+    };
   if ($("renameNamedSelection"))
     $("renameNamedSelection").onclick = async () => {
       if (!active) return;
@@ -820,8 +852,45 @@ function renderViewer({updatePanel=true}={}) {
       await save();
       renderViewer();
     };
+  if ($("appendNamedSelection"))
+    $("appendNamedSelection").onclick = async () => {
+      const choices = s.namedSelections
+        .map((memory, index) => `${index + 1}. ${memory.title}`)
+        .join("\n");
+      const answer = prompt(
+        `追加先の番号を入力してください。\n\n${choices}`,
+      );
+      const target = s.namedSelections[Number(answer) - 1];
+      if (!target) return;
+      const ids = new Set(target.messageIds);
+      messageSelected.forEach((id) => ids.add(id));
+      target.messageIds = s.messages
+        .filter((m) => !m.hidden && ids.has(m.id))
+        .map((m) => m.id);
+      activeNamedSelection = target.id;
+      messageSelected.clear();
+      messageSelectionAnchor = "";
+      await save();
+      renderViewer();
+      alert(`思い出「${target.title}」へ追加しました。`);
+    };
   if ($("saveNamedSelection"))
     $("saveNamedSelection").onclick = async () => {
+      if (editingMemoryId) {
+        const memory = s.namedSelections.find((x) => x.id === editingMemoryId);
+        if (!memory) return;
+        memory.messageIds = s.messages
+          .filter((m) => !m.hidden && messageSelected.has(m.id))
+          .map((m) => m.id);
+        editingMemoryId = "";
+        activeNamedSelection = memory.id;
+        messageSelected.clear();
+        messageSelectionAnchor = "";
+        await save();
+        renderViewer();
+        alert(`思い出「${memory.title}」の内容を更新しました。`);
+        return;
+      }
       const title = prompt("この選択範囲のタイトル");
       if (!title?.trim()) return;
       const item = {
@@ -849,6 +918,7 @@ function renderViewer({updatePanel=true}={}) {
     };
   if ($("cancelMessageCopy"))
     $("cancelMessageCopy").onclick = () => {
+      editingMemoryId = "";
       messageSelected.clear();
       messageSelectionAnchor = "";
       renderViewer();
@@ -1173,6 +1243,7 @@ function openSession(id) {
   sessionIncludePrevious = false;
   messageSelected.clear();
   messageSelectionAnchor = "";
+  editingMemoryId = "";
   activeNamedSelection = "";
   viewMode = "session";
   renderList();
@@ -1215,7 +1286,12 @@ function memoryItems() {
     .flatMap((session) =>
       (session.namedSelections || []).map((memory) => ({ session, memory })),
     )
-    .sort((a, b) => b.session.time - a.session.time);
+    .sort((a, b) => memoryTimestamp(b.session, b.memory) - memoryTimestamp(a.session, a.memory));
+}
+function memoryTimestamp(session, memory) {
+  const ids = new Set(memory.messageIds || []);
+  const first = session.messages.find((message) => ids.has(message.id));
+  return Number(first?.time || session.time || 0);
 }
 function memoryFolder(session, memory) {
   return session.folder || "未分類";
@@ -1308,6 +1384,7 @@ function openMemory(sessionId, memoryId) {
   selected = sessionId;
   messageSelected.clear();
   messageSelectionAnchor = "";
+  editingMemoryId = "";
   activeNamedSelection = memoryId;
   viewMode = "session";
   renderList();
@@ -1349,7 +1426,7 @@ function renderMemories() {
     ({ session, memory }) => memoryFolder(session, memory) === currentMemoryFolder,
   );
   $("viewer").innerHTML =
-    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">保存したタイトルを選ぶと元の会話へ移動し、「まるごとコピー」で範囲全文を持ち出せます。</p></div><span class="count-badge">${folderItems.length} 件</span></div><div class="memory-list">${folderItems.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
+    `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">思い出に含まれる最初の発言日時が新しい順に並びます。</p></div><span class="count-badge">${folderItems.length} 件</span></div><div class="memory-list">${folderItems.map(({ session, memory }) => `<div class="memory-entry"><button data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong>${esc(memory.title)}${memoryDate(session, memory) ? ` ${esc(memoryDate(session, memory))}` : ""}</strong><small>${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><button class="memory-copy" data-copy-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">まるごとコピー</button><button class="memory-edit" data-edit-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">内容編集</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
   $("backToFolders").onclick = showFolders;
   $("backToMemories").onclick = showMemories;
   document
@@ -1376,6 +1453,21 @@ function renderMemories() {
             !message.hidden && memory.messageIds.includes(message.id),
         ).length;
         alert(`思い出「${memory.title}」の${count}件をコピーしました。`);
+      }),
+  );
+  document.querySelectorAll("[data-edit-memory]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        openMemory(button.dataset.sessionId, button.dataset.editMemory);
+        const session = all.find((x) => x.id === button.dataset.sessionId);
+        const memory = session?.namedSelections?.find(
+          (x) => x.id === button.dataset.editMemory,
+        );
+        if (!memory) return;
+        editingMemoryId = memory.id;
+        messageSelected = new Set(memory.messageIds);
+        messageSelectionAnchor = memory.messageIds.at(-1) || "";
+        renderViewer();
       }),
   );
   document.querySelectorAll("[data-rename-memory]").forEach(
@@ -1803,6 +1895,39 @@ addEventListener("resize", () => {
   if (matchMedia("(max-width:760px)").matches)
     document.body.classList.remove("desktop-header-hidden");
 });
+
+function restorePreviousScreen() {
+  const previous = navigationBackStack.pop();
+  if (!previous) return false;
+  selected = previous.selected;
+  viewMode = previous.viewMode;
+  sessionMessageQuery = previous.sessionMessageQuery;
+  sessionModelFilter = previous.sessionModelFilter;
+  sessionIncludePrevious = previous.sessionIncludePrevious;
+  activeNamedSelection = previous.activeNamedSelection;
+  renderList();
+  renderViewer();
+  requestAnimationFrame(() => {
+    $("viewer").scrollTop = previous.viewerScroll;
+    window.scrollTo(0, previous.pageScroll);
+  });
+  return true;
+}
+let swipeStartX = -1, swipeStartY = 0;
+document.addEventListener("touchstart", (event) => {
+  const touch = event.touches[0];
+  if (!touch || touch.clientX > 42) return;
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+}, { passive: true });
+document.addEventListener("touchend", (event) => {
+  if (swipeStartX < 0) return;
+  const touch = event.changedTouches[0],
+    dx = touch.clientX - swipeStartX,
+    dy = Math.abs(touch.clientY - swipeStartY);
+  swipeStartX = -1;
+  if (dx > 90 && dy < 70 && dx > dy * 1.4) restorePreviousScreen();
+}, { passive: true });
 
 (async () => {
   await load();

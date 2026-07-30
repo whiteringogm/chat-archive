@@ -2275,7 +2275,10 @@ function dlScan() {
   const found = [];
   activeSessions().forEach(s => (s.messages || []).forEach((m, i) => {
     if (m.hidden || m.role !== "assistant" || saved.has(s.id + "::" + m.id)) return;
-    const prev = s.messages[i - 1], ask = prev && prev.role === "user" ? prev.text : "", answer = m.text || "";
+    const nextVisible = s.messages.slice(i + 1).find(x => !x.hidden);
+    if (nextVisible && nextVisible.role === "assistant") return;
+    const prev = s.messages.slice(0, i).reverse().find(x => !x.hidden && x.role === "user");
+    const ask = prev ? prev.text : "", answer = m.text || "";
     const answerKind = /締めログ/.test(answer) ? "closing" : /#今日の記録|今日の記録/.test(answer) ? "today" : "";
     const requestedKind = /締めログ/.test(ask) ? "closing" : /#今日の記録|今日の記録/.test(ask) ? "today" : "";
     const diaryLike = answer.trim().length >= 100 && answer.trim().split(/\n\s*\n|\n/).filter(Boolean).length >= 3;
@@ -2478,7 +2481,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v53";
+document.querySelector(".app-version").textContent = "v54";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

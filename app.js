@@ -2213,6 +2213,9 @@ const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,
 const dlCss = document.createElement("style");
 dlCss.textContent = ".dl-tools,.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{max-height:10em;overflow:hidden;margin:11px 0;padding:10px;border-radius:10px;background:var(--paper);white-space:pre-wrap;line-height:1.65}.dl-actions button,.dl-tools button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}}";
 document.head.append(dlCss);
+const dlGroupCss = document.createElement("style");
+dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}}";
+document.head.append(dlGroupCss);
 let dlCandidates = [];
 function dlList() {
   if (!Array.isArray(settings.diaryEntries)) settings.diaryEntries = [];
@@ -2341,10 +2344,32 @@ function dlSelected() {
   const kind = /締めログ/.test(text) ? "closing" : "today";
   return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona: effectivePersona(session), model: assistant.model || "", sessionId: session.id, messageId: messages[0].id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0 };
 }
+function dlCard(entry) {
+  return '<article class="dl-card"><span class="dl-kind">' + (entry.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
+}
+function dlGroupedRows(rows) {
+  const personas = new Map();
+  rows.forEach(entry => {
+    const persona = entry.persona || "ペルソナ未設定";
+    const month = /^\d{4}-\d{2}/.test(entry.date || "") ? entry.date.slice(0, 7) : "日付不明";
+    if (!personas.has(persona)) personas.set(persona, new Map());
+    const months = personas.get(persona);
+    if (!months.has(month)) months.set(month, []);
+    months.get(month).push(entry);
+  });
+  return Array.from(personas.entries()).map(([persona, months]) => {
+    const count = Array.from(months.values()).reduce((sum, entries) => sum + entries.length, 0);
+    const monthHtml = Array.from(months.entries()).map(([month, entries], monthIndex) => {
+      const label = month === "日付不明" ? month : month.slice(0, 4) + "年" + Number(month.slice(5, 7)) + "月";
+      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件　⌄</span></summary><div class="dl-month-list">' + entries.map(dlCard).join("") + '</div></details>';
+    }).join("");
+    return '<details class="dl-persona" open><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-months">' + monthHtml + '</div></details>';
+  }).join("");
+}
 function dlRender() {
   const rows = dlList().slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const candidates = dlCandidates.length ? '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + (c.kind === "closing" ? "締めログ" : "今日の記録") + '</strong>' + (c.warning ? '<p class="dl-warning">⚠ ' + esc(c.warning) + '</p>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><button data-dlc="' + esc(c.id) + '">確認・登録</button></div>').join("") + "</section>" : "";
-  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><strong>日記ログ</strong></nav><div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>日記ログ</h2><p class="muted">今日の記録と締めログを別ログとして保存します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button></div>' + candidates + '<div class="dl-list">' + (rows.map(e => '<article class="dl-card"><span class="dl-kind">' + (e.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(e.date) + '</h3><small>' + esc(e.persona || "ペルソナ未設定") + (e.model ? " · " + esc(e.model) : "") + '</small><div class="dl-body">' + esc(e.body) + '</div><div class="dl-actions">' + (e.sessionId ? '<button class="dl-jump" data-dlj="' + esc(e.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(e.id) + '">内容修正</button><button data-dld="' + esc(e.id) + '">削除</button></div></article>').join("") || "<p>まだ登録されていません。</p>") + "</div></section>";
+  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><strong>登録済みの日記</strong></nav><div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button></div>' + candidates + '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div></section>";
   $("dlBack").onclick = showFolders;
   $("dlScan").onclick = dlScan;
   $("dlManual").onclick = () => dlEditor();
@@ -2360,6 +2385,13 @@ function dlRender() {
   });
 }
 function showDiaries() { viewMode = "diaries"; selected = ""; renderList(); renderViewer(); }
+const dlHeaderButton = document.createElement("button");
+dlHeaderButton.id = "headerDiaries";
+dlHeaderButton.type = "button";
+dlHeaderButton.textContent = "☾ 日記";
+document.querySelector(".header-actions")?.prepend(dlHeaderButton);
+dlHeaderButton.onclick = showDiaries;
+document.querySelector(".app-version").textContent = "v51";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;
@@ -2367,7 +2399,7 @@ renderFolderBrowser = function() {
   dlBaseFolders();
   const anchor = document.querySelector("#openNotes");
   if (!anchor) return;
-  anchor.insertAdjacentHTML("afterend", '<button id="openDiaries" class="memory-card"><span><strong>☾ 日記ログ</strong><small>今日の記録と締めログを抽出・修正して保存する</small></span><span class="memory-mark">' + dlList().length + '件 ›</span></button>');
+  anchor.insertAdjacentHTML("afterend", '<button id="openDiaries" class="memory-card"><span><strong>☾ 登録済みの日記</strong><small>ペルソナ別・月別に日記を読む、抽出する、修正する</small></span><span class="memory-mark">' + dlList().length + '件 ›</span></button>');
   $("openDiaries").onclick = showDiaries;
 };
 const dlBasePanel = renderSessionPanel;

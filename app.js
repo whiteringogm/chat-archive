@@ -2208,3 +2208,119 @@ function maCard(s,m){const r=maR(m).map(maF).filter(Boolean);return `<details cl
 const rm47=renderMemories;renderMemories=function(){rm47();if(!currentMemoryFolder)return;const a=maI().filter(x=>memoryFolder(x.session,x.memory)===currentMemoryFolder),l=document.querySelector(".memory-list");if(!l||!a.length)return;l.innerHTML=a.map(x=>maCard(x.session,x.memory)).join("");document.querySelector(".browser-heading .muted").textContent="タイトルをタップすると、コメントと操作を開きます。";
  document.querySelectorAll("[data-mao]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mao);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mar]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mar);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mae]").forEach(b=>b.onclick=()=>maE(maF(b.dataset.mae).memory));document.querySelectorAll("[data-map]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.map);showMemoryPreview(x.session,x.memory)});document.querySelectorAll("[data-maj]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.maj);exportMemoryJson(x.session,x.memory)});document.querySelectorAll("[data-mac]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mac);openMemory(x.session.id,x.memory.id);editingMemoryId=x.memory.id;messageSelected=new Set(x.memory.messageIds);messageSelectionAnchor=x.memory.messageIds.at(-1)||"";renderViewer()});document.querySelectorAll("[data-man]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.man),t=prompt("思い出の名前を変更",x.memory.title);if(!t?.trim()||t.trim()===x.memory.title)return;x.memory.title=t.trim();await save();renderMemories()});document.querySelectorAll("[data-mad]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.mad);if(!confirm(`思い出「${x.memory.title}」を削除しますか？`))return;x.session.namedSelections=x.session.namedSelections.filter(m=>m.id!==x.memory.id);all.forEach(s=>(s.namedSelections||[]).forEach(m=>{if(Array.isArray(m.relatedMemoryIds))m.relatedMemoryIds=m.relatedMemoryIds.filter(id=>id!==x.memory.id)}));await save();renderMemories()})};
 const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,m);x.memory.comment=m.comment||"";x.memory.tags=maT(m);x.memory.relatedMemoryIds=maR(m);return x};
+
+/* diaryLogsV49 */
+const dlCss = document.createElement("style");
+dlCss.textContent = ".dl-tools,.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{max-height:10em;overflow:hidden;margin:11px 0;padding:10px;border-radius:10px;background:var(--paper);white-space:pre-wrap;line-height:1.65}.dl-actions button,.dl-tools button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}}";
+document.head.append(dlCss);
+let dlCandidates = [];
+function dlList() {
+  if (!Array.isArray(settings.diaryEntries)) settings.diaryEntries = [];
+  return settings.diaryEntries;
+}
+function dlDate(time, minus) {
+  if (!time) return "";
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time * 1000 - (minus ? 86400000 : 0)));
+}
+function dlExplicit(text) {
+  const m = String(text || "").match(/(20\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})日?/);
+  return m ? m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0") : "";
+}
+function dlBody(text, kind) {
+  const raw = String(text || "").trim();
+  const blocks = Array.from(raw.matchAll(/```(?:text)?\s*([\s\S]*?)```/gi)).map(x => x[1].trim());
+  const block = blocks.find(x => /20\d{2}[-\/年]\d{1,2}[-\/月]\d{1,2}|#今日の記録|締めログ/.test(x));
+  if (block) return block;
+  const start = kind === "closing" ? raw.search(/[〈【]締めログ|締めログ[:：]/) : raw.search(/20\d{2}[-\/年]\d{1,2}[-\/月]\d{1,2}日?/);
+  return start >= 0 ? raw.slice(start).trim() : raw;
+}
+function dlScan() {
+  const saved = new Set(dlList().map(x => x.sessionId + "::" + x.messageId));
+  const found = [];
+  activeSessions().forEach(s => (s.messages || []).forEach((m, i) => {
+    if (m.hidden || m.role !== "assistant" || saved.has(s.id + "::" + m.id)) return;
+    const prev = s.messages[i - 1], ask = prev && prev.role === "user" ? prev.text : "", hay = (m.text || "") + " " + ask;
+    const kind = /締めログ/.test(hay) ? "closing" : /#今日の記録|今日の記録/.test(hay) ? "today" : "";
+    if (!kind) return;
+    const stated = dlExplicit(m.text), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay)), persona = effectivePersona(s);
+    const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && x.persona === persona);
+    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(m.text, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
+  }));
+  dlCandidates = found.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  dlRender();
+}
+function dlJump(entry) {
+  if (!entry.sessionId || !entry.messageId) return alert("手動登録の日記には元発言がありません。");
+  openSession(entry.sessionId);
+  renderViewer();
+  setTimeout(() => $("msg-" + entry.messageId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+}
+function dlEditor(item, candidate) {
+  document.querySelector("#dlEditor")?.remove();
+  const base = item || candidate || { kind: "today", date: dlDate(Date.now() / 1000), body: "", persona: "", model: "" };
+  const d = document.createElement("dialog");
+  d.id = "dlEditor";
+  d.className = "dl-dialog";
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div><div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  document.body.append(d);
+  d.querySelector("#dlKind").value = base.kind;
+  d.addEventListener("close", () => d.remove(), { once: true });
+  d.querySelector("#dlSave").onclick = async () => {
+    const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
+    if (!body || !dateValue) return alert("記録日と本文を入力してください。");
+    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona: d.querySelector("#dlPersona").value.trim(), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, updatedAt: Date.now() };
+    const list = dlList(), index = list.findIndex(x => x.id === entry.id);
+    if (index >= 0) list[index] = entry; else list.push(entry);
+    if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
+    await save();
+    d.close();
+    dlRender();
+  };
+  d.showModal();
+}
+function dlSelected() {
+  const session = all.find(x => x.id === selected);
+  if (!session || !messageSelected.size) return null;
+  const messages = session.messages.filter(m => messageSelected.has(m.id) && !m.hidden);
+  const assistant = messages.find(m => m.role === "assistant") || messages[0];
+  const text = messages.map(m => (messages.length > 1 ? nameOf(m, session) + "：\n" : "") + m.text).join("\n\n");
+  const kind = /締めログ/.test(text) ? "closing" : "today";
+  return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona: effectivePersona(session), model: assistant.model || "", sessionId: session.id, messageId: messages[0].id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0 };
+}
+function dlRender() {
+  const rows = dlList().slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const candidates = dlCandidates.length ? '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + (c.kind === "closing" ? "締めログ" : "今日の記録") + '</strong>' + (c.warning ? '<p class="dl-warning">⚠ ' + esc(c.warning) + '</p>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><button data-dlc="' + esc(c.id) + '">確認・登録</button></div>').join("") + "</section>" : "";
+  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><strong>日記ログ</strong></nav><div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>日記ログ</h2><p class="muted">今日の記録と締めログを別ログとして保存します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button></div>' + candidates + '<div class="dl-list">' + (rows.map(e => '<article class="dl-card"><span class="dl-kind">' + (e.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(e.date) + '</h3><small>' + esc(e.persona || "ペルソナ未設定") + (e.model ? " · " + esc(e.model) : "") + '</small><div class="dl-body">' + esc(e.body) + '</div><div class="dl-actions">' + (e.sessionId ? '<button class="dl-jump" data-dlj="' + esc(e.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(e.id) + '">内容修正</button><button data-dld="' + esc(e.id) + '">削除</button></div></article>').join("") || "<p>まだ登録されていません。</p>") + "</div></section>";
+  $("dlBack").onclick = showFolders;
+  $("dlScan").onclick = dlScan;
+  $("dlManual").onclick = () => dlEditor();
+  document.querySelectorAll("[data-dlc]").forEach(b => b.onclick = () => dlEditor(null, dlCandidates.find(x => x.id === b.dataset.dlc)));
+  document.querySelectorAll("[data-dlj]").forEach(b => b.onclick = () => dlJump(dlList().find(x => x.id === b.dataset.dlj)));
+  document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));
+  document.querySelectorAll("[data-dld]").forEach(b => b.onclick = async () => {
+    const entry = dlList().find(x => x.id === b.dataset.dld);
+    if (!entry || !confirm(entry.date + " の日記を削除しますか？")) return;
+    settings.diaryEntries = dlList().filter(x => x.id !== entry.id);
+    await save();
+    dlRender();
+  });
+}
+function showDiaries() { viewMode = "diaries"; selected = ""; renderList(); renderViewer(); }
+const dlBaseViewer = renderViewer;
+renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
+const dlBaseFolders = renderFolderBrowser;
+renderFolderBrowser = function() {
+  dlBaseFolders();
+  const anchor = document.querySelector("#openNotes");
+  if (!anchor) return;
+  anchor.insertAdjacentHTML("afterend", '<button id="openDiaries" class="memory-card"><span><strong>☾ 日記ログ</strong><small>今日の記録と締めログを抽出・修正して保存する</small></span><span class="memory-mark">' + dlList().length + '件 ›</span></button>');
+  $("openDiaries").onclick = showDiaries;
+};
+const dlBasePanel = renderSessionPanel;
+renderSessionPanel = function() {
+  dlBasePanel();
+  const anchor = $("panelAppendMemory");
+  if (!anchor) return;
+  anchor.insertAdjacentHTML("afterend", '<button id="panelSaveDiary" class="session-panel-action wide" ' + (messageSelected.size ? "" : "disabled") + '>選択中の' + messageSelected.size + '件を日記として登録</button>');
+  $("panelSaveDiary").onclick = () => { const candidate = dlSelected(); if (candidate) { closeSessionPanel(); dlEditor(null, candidate); } };
+};

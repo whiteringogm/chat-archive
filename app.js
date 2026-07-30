@@ -2470,7 +2470,7 @@ function dlRender() {
   document.querySelectorAll("[data-dlr]").forEach(b => b.onclick = async () => {
     settings.diaryExcludedSources = dlExcluded().filter(x => dlSourceKey(x) !== b.dataset.dlr);
     await save();
-    dlRender();
+    dlScan();
   });
   document.querySelectorAll("[data-dlj]").forEach(b => b.onclick = () => dlJump(dlList().find(x => x.id === b.dataset.dlj)));
   document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));

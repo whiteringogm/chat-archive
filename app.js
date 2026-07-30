@@ -2217,9 +2217,17 @@ const dlGroupCss = document.createElement("style");
 dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}}";
 document.head.append(dlGroupCss);
 let dlCandidates = [];
+let dlCandidateMode = false;
 function dlList() {
   if (!Array.isArray(settings.diaryEntries)) settings.diaryEntries = [];
   return settings.diaryEntries;
+}
+function dlExcluded() {
+  if (!Array.isArray(settings.diaryExcludedSources)) settings.diaryExcludedSources = [];
+  return settings.diaryExcludedSources;
+}
+function dlSourceKey(entry) {
+  return (entry.sessionId || "") + "::" + (entry.messageId || "");
 }
 function dlDate(time, minus) {
   if (!time) return "";
@@ -2272,9 +2280,11 @@ function dlSourceTime(time) {
 }
 function dlScan() {
   const saved = new Set(dlList().map(x => x.sessionId + "::" + x.messageId));
+  const excluded = new Set(dlExcluded().map(dlSourceKey));
   const found = [];
   activeSessions().forEach(s => (s.messages || []).forEach((m, i) => {
-    if (m.hidden || m.role !== "assistant" || saved.has(s.id + "::" + m.id)) return;
+    const sourceKey = s.id + "::" + m.id;
+    if (m.hidden || m.role !== "assistant" || saved.has(sourceKey) || excluded.has(sourceKey)) return;
     const nextVisible = s.messages.slice(i + 1).find(x => !x.hidden);
     if (nextVisible && nextVisible.role === "assistant") return;
     const prev = s.messages.slice(0, i).reverse().find(x => !x.hidden && x.role === "user");
@@ -2299,6 +2309,7 @@ function dlScan() {
     delete candidate.explicitKind;
     return candidate;
   }).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  dlCandidateMode = true;
   dlRender();
 }
 function dlJump(entry) {
@@ -2434,12 +2445,33 @@ function dlGroupedRows(rows) {
 }
 function dlRender() {
   const rows = dlList().slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  const candidates = dlCandidates.length ? '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + (c.kind === "closing" ? "締めログ" : "今日の記録") + '</strong>' + (c.warning ? '<p class="dl-warning">⚠ ' + esc(c.warning) + '</p>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><button data-dlc="' + esc(c.id) + '">確認・登録</button></div>').join("") + "</section>" : "";
-  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><strong>登録済みの日記</strong></nav><div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button></div>' + candidates + '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div></section>";
+  const candidates = '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + (dlCandidates.length ? dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + (c.kind === "closing" ? "締めログ" : "今日の記録") + '</strong>' + (c.warning ? '<p class="dl-warning">⚠ ' + esc(c.warning) + '</p>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><div class="dl-actions"><button data-dlc="' + esc(c.id) + '">確認・登録</button><button data-dlx="' + esc(c.id) + '">これは日記じゃない</button></div></div>').join("") : "<p>新しい候補はありません。</p>") + "</section>";
+  const excluded = dlExcluded();
+  const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(x.persona || "ペルソナ未設定") + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
+  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button></div><div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml;
+  const candidateHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY CANDIDATES</p><h2>日記の抽出候補</h2><p class="muted">確認して登録するか、候補から除外できます。</p></div><span class="count-badge">' + dlCandidates.length + ' 件</span></div><div class="dl-tools"><button id="dlReturn">← 登録済みの日記へ戻る</button></div>' + candidates;
+  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
   $("dlBack").onclick = showFolders;
-  $("dlScan").onclick = dlScan;
-  $("dlManual").onclick = () => dlEditor();
+  $("dlCrumbDiary").onclick = showDiaries;
+  if ($("dlReturn")) $("dlReturn").onclick = showDiaries;
+  if ($("dlScan")) $("dlScan").onclick = dlScan;
+  if ($("dlManual")) $("dlManual").onclick = () => dlEditor();
   document.querySelectorAll("[data-dlc]").forEach(b => b.onclick = () => dlEditor(null, dlCandidates.find(x => x.id === b.dataset.dlc)));
+  document.querySelectorAll("[data-dlx]").forEach(b => b.onclick = async () => {
+    const candidate = dlCandidates.find(x => x.id === b.dataset.dlx);
+    if (!candidate) return;
+    if (!dlExcluded().some(x => dlSourceKey(x) === dlSourceKey(candidate))) {
+      dlExcluded().push({ sessionId: candidate.sessionId, messageId: candidate.messageId, date: candidate.date, persona: candidate.persona, kind: candidate.kind, preview: candidate.body.slice(0, 160), excludedAt: Date.now() });
+    }
+    dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
+    await save();
+    dlRender();
+  });
+  document.querySelectorAll("[data-dlr]").forEach(b => b.onclick = async () => {
+    settings.diaryExcludedSources = dlExcluded().filter(x => dlSourceKey(x) !== b.dataset.dlr);
+    await save();
+    dlRender();
+  });
   document.querySelectorAll("[data-dlj]").forEach(b => b.onclick = () => dlJump(dlList().find(x => x.id === b.dataset.dlj)));
   document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));
   const grouped = new Map();
@@ -2474,14 +2506,14 @@ function dlRender() {
     dlRender();
   });
 }
-function showDiaries() { viewMode = "diaries"; selected = ""; renderList(); renderViewer(); }
+function showDiaries() { dlCandidateMode = false; viewMode = "diaries"; selected = ""; renderList(); renderViewer(); }
 const dlHeaderButton = document.createElement("button");
 dlHeaderButton.id = "headerDiaries";
 dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v54";
+document.querySelector(".app-version").textContent = "v55";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

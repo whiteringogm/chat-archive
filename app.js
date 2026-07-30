@@ -2274,6 +2274,9 @@ function dlEditor(item, candidate) {
     if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
     await save();
     d.close();
+    viewMode = "diaries";
+    selected = "";
+    renderList();
     dlRender();
   };
   d.showModal();

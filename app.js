@@ -2275,14 +2275,27 @@ function dlScan() {
   const found = [];
   activeSessions().forEach(s => (s.messages || []).forEach((m, i) => {
     if (m.hidden || m.role !== "assistant" || saved.has(s.id + "::" + m.id)) return;
-    const prev = s.messages[i - 1], ask = prev && prev.role === "user" ? prev.text : "", hay = (m.text || "") + " " + ask;
-    const kind = /締めログ/.test(hay) ? "closing" : /#今日の記録|今日の記録/.test(hay) ? "today" : "";
+    const prev = s.messages[i - 1], ask = prev && prev.role === "user" ? prev.text : "", answer = m.text || "";
+    const answerKind = /締めログ/.test(answer) ? "closing" : /#今日の記録|今日の記録/.test(answer) ? "today" : "";
+    const requestedKind = /締めログ/.test(ask) ? "closing" : /#今日の記録|今日の記録/.test(ask) ? "today" : "";
+    const diaryLike = answer.trim().length >= 100 && answer.trim().split(/\n\s*\n|\n/).filter(Boolean).length >= 3;
+    const kind = answerKind || (diaryLike ? requestedKind : "");
     if (!kind) return;
-    const stated = dlExplicit(m.text), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay)), persona = effectivePersona(s);
+    const hay = answer + " " + ask;
+    const stated = dlExplicit(answer), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay)), persona = effectivePersona(s);
     const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && x.persona === persona);
-    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(m.text, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: m.text || "", warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
+    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(answer, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: answer, explicitKind: Boolean(answerKind), warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
   }));
-  dlCandidates = found.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const unique = new Map();
+  found.forEach(candidate => {
+    const key = candidate.sessionId + "::" + candidate.kind + "::" + candidate.sourceTime;
+    const current = unique.get(key);
+    if (!current || Number(candidate.explicitKind) > Number(current.explicitKind) || (candidate.explicitKind === current.explicitKind && candidate.sourceText.length > current.sourceText.length)) unique.set(key, candidate);
+  });
+  dlCandidates = Array.from(unique.values()).map(candidate => {
+    delete candidate.explicitKind;
+    return candidate;
+  }).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   dlRender();
 }
 function dlJump(entry) {
@@ -2465,7 +2478,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v52";
+document.querySelector(".app-version").textContent = "v53";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

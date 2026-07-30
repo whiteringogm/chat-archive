@@ -2211,7 +2211,7 @@ const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,
 
 /* diaryLogsV50 */
 const dlCss = document.createElement("style");
-dlCss.textContent = ".dl-tools,.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{max-height:10em;overflow:hidden;margin:11px 0;padding:10px;border-radius:10px;background:var(--paper);white-space:pre-wrap;line-height:1.65}.dl-actions button,.dl-tools button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}}";
+dlCss.textContent = ".dl-tools,.dl-actions,.dl-export-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{margin:11px 0;padding:13px;border-radius:10px;background:var(--paper);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75}.dl-actions button,.dl-tools button,.dl-export-actions button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump,.dl-export-actions .dl-export-primary{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}.dl-month-export{padding:0 10px 4px}.dl-month-export .dl-export-actions{margin:6px 0}.dl-persona-export{padding:0 15px 3px}.dl-copy-done{border-color:var(--accent)!important;color:var(--accent)!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}.dl-export-actions{display:grid;grid-template-columns:1fr 1fr}.dl-export-actions button{min-width:0}}";
 document.head.append(dlCss);
 const dlGroupCss = document.createElement("style");
 dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}}";
@@ -2245,15 +2245,16 @@ function dlSource(base) {
     ? base.messageIds
     : base.messageId ? [base.messageId] : [];
   const messages = ids.map(id => session.messages.find(m => m.id === id)).filter(Boolean);
-  const source = messages.find(m => m.role === "assistant") ||
+  const source = messages.find(m => m.id === base.messageId && m.role === "assistant") ||
+    messages.find(m => m.role === "assistant") ||
     messages.find(m => m.id === base.messageId) ||
     session.messages.find(m => m.id === base.messageId);
-  if (!source) return null;
+  if (!source && !base.sourceText) return null;
   return {
     session,
     message: source,
-    time: source.time || base.sourceTime || 0,
-    text: source.text || "",
+    time: (source && source.time) || base.sourceTime || 0,
+    text: base.sourceText || (source && source.text) || "",
   };
 }
 function dlSourceTime(time) {
@@ -2279,7 +2280,7 @@ function dlScan() {
     if (!kind) return;
     const stated = dlExplicit(m.text), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay)), persona = effectivePersona(s);
     const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && x.persona === persona);
-    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(m.text, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
+    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(m.text, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: m.text || "", warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
   }));
   dlCandidates = found.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   dlRender();
@@ -2322,7 +2323,7 @@ function dlEditor(item, candidate) {
   d.querySelector("#dlSave").onclick = async () => {
     const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");
-    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona: d.querySelector("#dlPersona").value.trim(), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, updatedAt: Date.now() };
+    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona: d.querySelector("#dlPersona").value.trim(), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", updatedAt: Date.now() };
     const list = dlList(), index = list.findIndex(x => x.id === entry.id);
     if (index >= 0) list[index] = entry; else list.push(entry);
     if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
@@ -2342,10 +2343,58 @@ function dlSelected() {
   const assistant = messages.find(m => m.role === "assistant") || messages[0];
   const text = messages.map(m => (messages.length > 1 ? nameOf(m, session) + "：\n" : "") + m.text).join("\n\n");
   const kind = /締めログ/.test(text) ? "closing" : "today";
-  return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona: effectivePersona(session), model: assistant.model || "", sessionId: session.id, messageId: messages[0].id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0 };
+  return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona: effectivePersona(session), model: assistant.model || "", sessionId: session.id, messageId: assistant.id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0, sourceText: assistant.text || "" };
 }
 function dlCard(entry) {
   return '<article class="dl-card"><span class="dl-kind">' + (entry.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
+}
+function dlPayload(entries, persona, month) {
+  return {
+    exportedAt: new Date().toISOString(),
+    persona,
+    month,
+    count: entries.length,
+    entries: entries.map(entry => ({
+      date: entry.date,
+      kind: entry.kind === "closing" ? "締めログ" : "今日の記録",
+      model: entry.model || null,
+      body: entry.body,
+      sourceTime: entry.sourceTime || null,
+      sessionId: entry.sessionId || null,
+      messageId: entry.messageId || null,
+    })),
+  };
+}
+function dlMarkdown(entries, persona, month) {
+  const label = month === "日付不明" ? month : month.slice(0, 4) + "年" + Number(month.slice(5, 7)) + "月";
+  return "# " + persona + " " + label + "\n\n" + entries.map(entry =>
+    "## " + entry.date + "｜" + (entry.kind === "closing" ? "締めログ" : "今日の記録") +
+    (entry.model ? "\n\nモデル：" + entry.model : "") + "\n\n" + entry.body
+  ).join("\n\n---\n\n") + "\n";
+}
+function dlPlainText(entries, persona, month) {
+  const label = month === "日付不明" ? month : month.slice(0, 4) + "年" + Number(month.slice(5, 7)) + "月";
+  return persona + " " + label + "\n\n" + entries.map(entry =>
+    entry.date + "｜" + (entry.kind === "closing" ? "締めログ" : "今日の記録") + "\n" + entry.body
+  ).join("\n\n---\n\n");
+}
+function dlMonthBase(persona, month) {
+  return safeName(persona) + "_" + safeName(month);
+}
+function dlExportMonth(persona, month, entries, format) {
+  const base = dlMonthBase(persona, month);
+  if (format === "json") download(base + ".json", JSON.stringify(dlPayload(entries, persona, month), null, 2), "application/json");
+  else download(base + ".md", dlMarkdown(entries, persona, month), "text/markdown");
+}
+function dlExportPersonaZip(persona, months) {
+  const files = [];
+  Array.from(months.entries()).forEach(([month, entries]) => {
+    const base = dlMonthBase(persona, month);
+    files.push({ name: base + ".json", text: JSON.stringify(dlPayload(entries, persona, month), null, 2) });
+    files.push({ name: base + ".md", text: dlMarkdown(entries, persona, month) });
+    files.push({ name: base + ".txt", text: dlPlainText(entries, persona, month) });
+  });
+  download(safeName(persona) + "_日記.zip", makeZip(files), "application/zip");
 }
 function dlGroupedRows(rows) {
   const personas = new Map();
@@ -2361,9 +2410,10 @@ function dlGroupedRows(rows) {
     const count = Array.from(months.values()).reduce((sum, entries) => sum + entries.length, 0);
     const monthHtml = Array.from(months.entries()).map(([month, entries], monthIndex) => {
       const label = month === "日付不明" ? month : month.slice(0, 4) + "年" + Number(month.slice(5, 7)) + "月";
-      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件　⌄</span></summary><div class="dl-month-list">' + entries.map(dlCard).join("") + '</div></details>';
+      const key = persona + "::" + month;
+      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件　⌄</span></summary><div class="dl-month-export"><div class="dl-export-actions"><button data-dlx-json="' + esc(key) + '">JSON</button><button data-dlx-md="' + esc(key) + '">Markdown</button><button class="dl-export-primary" data-dlx-copy="' + esc(key) + '">テキストコピー</button></div></div><div class="dl-month-list">' + entries.map(dlCard).join("") + '</div></details>';
     }).join("");
-    return '<details class="dl-persona" open><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-months">' + monthHtml + '</div></details>';
+    return '<details class="dl-persona" open><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-persona-export"><div class="dl-export-actions"><button class="dl-export-primary" data-dlx-zip="' + esc(persona) + '">このペルソナをZIP出力</button></div></div><div class="dl-months">' + monthHtml + '</div></details>';
   }).join("");
 }
 function dlRender() {
@@ -2376,6 +2426,30 @@ function dlRender() {
   document.querySelectorAll("[data-dlc]").forEach(b => b.onclick = () => dlEditor(null, dlCandidates.find(x => x.id === b.dataset.dlc)));
   document.querySelectorAll("[data-dlj]").forEach(b => b.onclick = () => dlJump(dlList().find(x => x.id === b.dataset.dlj)));
   document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));
+  const grouped = new Map();
+  rows.forEach(entry => {
+    const persona = entry.persona || "ペルソナ未設定";
+    const month = /^\d{4}-\d{2}/.test(entry.date || "") ? entry.date.slice(0, 7) : "日付不明";
+    if (!grouped.has(persona)) grouped.set(persona, new Map());
+    if (!grouped.get(persona).has(month)) grouped.get(persona).set(month, []);
+    grouped.get(persona).get(month).push(entry);
+  });
+  const monthRows = key => {
+    const split = key.lastIndexOf("::");
+    const persona = key.slice(0, split), month = key.slice(split + 2);
+    return { persona, month, entries: grouped.get(persona).get(month) };
+  };
+  document.querySelectorAll("[data-dlx-json]").forEach(b => b.onclick = () => { const x = monthRows(b.dataset.dlxJson); dlExportMonth(x.persona, x.month, x.entries, "json"); });
+  document.querySelectorAll("[data-dlx-md]").forEach(b => b.onclick = () => { const x = monthRows(b.dataset.dlxMd); dlExportMonth(x.persona, x.month, x.entries, "md"); });
+  document.querySelectorAll("[data-dlx-copy]").forEach(b => b.onclick = async () => {
+    const x = monthRows(b.dataset.dlxCopy);
+    await copyToClipboard(dlPlainText(x.entries, x.persona, x.month));
+    const old = b.textContent;
+    b.textContent = "コピーしました";
+    b.classList.add("dl-copy-done");
+    setTimeout(() => { if (b.isConnected) { b.textContent = old; b.classList.remove("dl-copy-done"); } }, 1400);
+  });
+  document.querySelectorAll("[data-dlx-zip]").forEach(b => b.onclick = () => dlExportPersonaZip(b.dataset.dlxZip, grouped.get(b.dataset.dlxZip)));
   document.querySelectorAll("[data-dld]").forEach(b => b.onclick = async () => {
     const entry = dlList().find(x => x.id === b.dataset.dld);
     if (!entry || !confirm(entry.date + " の日記を削除しますか？")) return;
@@ -2391,7 +2465,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v51";
+document.querySelector(".app-version").textContent = "v52";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

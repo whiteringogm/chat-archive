@@ -2209,9 +2209,9 @@ const rm47=renderMemories;renderMemories=function(){rm47();if(!currentMemoryFold
  document.querySelectorAll("[data-mao]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mao);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mar]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mar);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mae]").forEach(b=>b.onclick=()=>maE(maF(b.dataset.mae).memory));document.querySelectorAll("[data-map]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.map);showMemoryPreview(x.session,x.memory)});document.querySelectorAll("[data-maj]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.maj);exportMemoryJson(x.session,x.memory)});document.querySelectorAll("[data-mac]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mac);openMemory(x.session.id,x.memory.id);editingMemoryId=x.memory.id;messageSelected=new Set(x.memory.messageIds);messageSelectionAnchor=x.memory.messageIds.at(-1)||"";renderViewer()});document.querySelectorAll("[data-man]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.man),t=prompt("思い出の名前を変更",x.memory.title);if(!t?.trim()||t.trim()===x.memory.title)return;x.memory.title=t.trim();await save();renderMemories()});document.querySelectorAll("[data-mad]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.mad);if(!confirm(`思い出「${x.memory.title}」を削除しますか？`))return;x.session.namedSelections=x.session.namedSelections.filter(m=>m.id!==x.memory.id);all.forEach(s=>(s.namedSelections||[]).forEach(m=>{if(Array.isArray(m.relatedMemoryIds))m.relatedMemoryIds=m.relatedMemoryIds.filter(id=>id!==x.memory.id)}));await save();renderMemories()})};
 const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,m);x.memory.comment=m.comment||"";x.memory.tags=maT(m);x.memory.relatedMemoryIds=maR(m);return x};
 
-/* diaryLogsV49 */
+/* diaryLogsV50 */
 const dlCss = document.createElement("style");
-dlCss.textContent = ".dl-tools,.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{max-height:10em;overflow:hidden;margin:11px 0;padding:10px;border-radius:10px;background:var(--paper);white-space:pre-wrap;line-height:1.65}.dl-actions button,.dl-tools button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}}";
+dlCss.textContent = ".dl-tools,.dl-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{max-height:10em;overflow:hidden;margin:11px 0;padding:10px;border-radius:10px;background:var(--paper);white-space:pre-wrap;line-height:1.65}.dl-actions button,.dl-tools button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}}";
 document.head.append(dlCss);
 let dlCandidates = [];
 function dlList() {
@@ -2233,6 +2233,38 @@ function dlBody(text, kind) {
   if (block) return block;
   const start = kind === "closing" ? raw.search(/[〈【]締めログ|締めログ[:：]/) : raw.search(/20\d{2}[-\/年]\d{1,2}[-\/月]\d{1,2}日?/);
   return start >= 0 ? raw.slice(start).trim() : raw;
+}
+function dlSource(base) {
+  if (!base || !base.sessionId) return null;
+  const session = all.find(x => x.id === base.sessionId);
+  if (!session) return null;
+  const ids = Array.isArray(base.messageIds) && base.messageIds.length
+    ? base.messageIds
+    : base.messageId ? [base.messageId] : [];
+  const messages = ids.map(id => session.messages.find(m => m.id === id)).filter(Boolean);
+  const source = messages.find(m => m.role === "assistant") ||
+    messages.find(m => m.id === base.messageId) ||
+    session.messages.find(m => m.id === base.messageId);
+  if (!source) return null;
+  return {
+    session,
+    message: source,
+    time: source.time || base.sourceTime || 0,
+    text: source.text || "",
+  };
+}
+function dlSourceTime(time) {
+  if (!time) return "投稿時刻不明";
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(time * 1000));
 }
 function dlScan() {
   const saved = new Set(dlList().map(x => x.sessionId + "::" + x.messageId));
@@ -2258,13 +2290,32 @@ function dlJump(entry) {
 function dlEditor(item, candidate) {
   document.querySelector("#dlEditor")?.remove();
   const base = item || candidate || { kind: "today", date: dlDate(Date.now() / 1000), body: "", persona: "", model: "" };
+  const source = dlSource(base);
+  const sourcePanel = source
+    ? '<section class="dl-source"><p class="dl-source-meta">元回答の投稿日時：<strong>' + esc(dlSourceTime(source.time)) + '</strong></p><div class="dl-source-actions"><button id="dlJumpSource" type="button">元の位置で確認</button><button id="dlShowSource" type="button">回答全文を表示</button></div><div id="dlSourceFull" hidden><pre class="dl-source-full">' + esc(source.text) + '</pre><button id="dlRestoreSource" class="dl-source-restore" type="button">この全文を本文へ復元</button></div></section>'
+    : '<p class="dl-source-meta">元回答：手動登録のため参照元なし</p>';
   const d = document.createElement("dialog");
   d.id = "dlEditor";
   d.className = "dl-dialog";
-  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div><div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
   document.body.append(d);
   d.querySelector("#dlKind").value = base.kind;
   d.addEventListener("close", () => d.remove(), { once: true });
+  if (source) {
+    d.querySelector("#dlJumpSource").onclick = () => {
+      d.close();
+      dlJump(base);
+    };
+    d.querySelector("#dlShowSource").onclick = () => {
+      const full = d.querySelector("#dlSourceFull");
+      full.hidden = !full.hidden;
+      d.querySelector("#dlShowSource").textContent = full.hidden ? "回答全文を表示" : "回答全文を閉じる";
+    };
+    d.querySelector("#dlRestoreSource").onclick = () => {
+      d.querySelector("#dlBody").value = source.text;
+      d.querySelector("#dlBody").focus();
+    };
+  }
   d.querySelector("#dlSave").onclick = async () => {
     const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");

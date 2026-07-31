@@ -4,6 +4,13 @@ document.head.append(navStyle);
 const sessionPanelStyle=document.createElement("style");
 sessionPanelStyle.textContent=`.floating-session-menu{position:fixed;right:18px;bottom:68px;z-index:20;padding:11px 15px;border:1px solid #a58cab;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;box-shadow:0 5px 22px #0003}.session-panel{position:fixed;right:18px;bottom:120px;z-index:31;width:min(360px,calc(100vw - 36px));max-height:min(72dvh,680px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--paper);box-shadow:0 20px 60px #0005;transform:translateY(12px);opacity:0;pointer-events:none;transition:.18s}.session-panel-open .session-panel{transform:none;opacity:1;pointer-events:auto}.session-panel-backdrop{display:none}.session-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.session-panel-head button{border:0;background:transparent;color:var(--muted);font-size:22px}.session-panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.session-panel-grid .wide{grid-column:1/-1}.session-panel button,.session-panel input,.session-panel select{min-height:42px}.session-panel-action{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);font-weight:750}.session-panel-action.primary{background:var(--accent);color:#fff}.session-panel-action:disabled{opacity:.45}.session-panel-section{display:grid;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.session-panel-section label{font-size:13px;font-weight:750}.session-panel-check{display:flex;align-items:center;gap:8px}.session-panel-check input{width:auto;min-height:auto}.session-panel-memories{display:grid;gap:6px}.session-panel-memory{text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}.session-panel-count{font-size:12px;color:var(--muted)}.session-panel-result{width:100%;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;font-weight:800}.jump-original{margin:8px 0 0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);padding:5px 8px;font-size:11px}.exit-focus-mode{display:none;position:fixed;right:10px;top:10px;z-index:100;padding:7px 10px;border:1px solid #aaa;border-radius:999px;background:#241d29;color:#fff;opacity:.78}.focus-mode header,.focus-mode aside,.focus-mode .sidebar-backdrop,.focus-mode .floating-menu,.focus-mode .floating-session-menu,.focus-mode .session-panel,.focus-mode .session-panel-backdrop,.focus-mode .tools,.focus-mode .session-fields,.focus-mode .saved-selection-nav,.focus-mode .session-message-filter,.focus-mode .message-select,.focus-mode .edit,.focus-mode .hide,.focus-mode .range-select,.focus-mode .message-copy-bar,.focus-mode .add-memo-after,.focus-mode .memo-actions{display:none!important}.focus-mode .exit-focus-mode{display:block}.focus-mode main{display:block;height:auto}.focus-mode .viewer{overflow:visible;padding:12px}.conversation>.saved-selection-nav,.conversation>.session-message-filter{display:none}@media(max-width:760px){.session-panel{inset:auto 10px 112px 10px;width:auto;max-height:72dvh}.session-panel-open .session-panel-backdrop{display:block;position:fixed;inset:0;z-index:30;border:0;background:#17101d88}.floating-menu{right:12px;bottom:14px}.floating-session-menu{right:12px;bottom:64px}}`;
 document.head.append(sessionPanelStyle);
+const displayPreferenceStyle = document.createElement("style");
+displayPreferenceStyle.textContent = `.focus-mode .message-time{display:none!important}.hide-model-names .message-model,.hide-model-names .session-models{display:none!important}.display-setting-check{display:flex;align-items:center;gap:9px}.display-setting-check input{width:auto;min-height:auto}`;
+document.head.append(displayPreferenceStyle);
+const displayPreferenceControl = document.createElement("label");
+displayPreferenceControl.className = "display-setting-check";
+displayPreferenceControl.innerHTML = '<input id="showModelNames" type="checkbox" checked> 発言のモデル名を表示';
+document.querySelector("#settings form .manager")?.before(displayPreferenceControl);
 const bulkStyle = document.createElement("style");
 bulkStyle.textContent = `.browser-session-row{display:grid;grid-template-columns:auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:15px;background:#fff;overflow:hidden}.browser-session-row.selected{border-color:var(--accent);background:#f7f0f8;box-shadow:0 4px 18px #4d385118}.browser-session-row .browser-session{border:0;border-radius:0;background:transparent}.session-check{display:grid;place-items:center;width:50px;border-right:1px solid var(--line);cursor:pointer}.session-check input{position:absolute;opacity:0;pointer-events:none}.session-check span{width:22px;height:22px;border:2px solid #b6a9b8;border-radius:7px;background:#fff}.session-check input:checked+span{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 4px #fff}.select-all{padding:9px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--accent);font-weight:800}.has-bulk-bar{padding-bottom:100px}.bulk-move-bar{position:sticky;bottom:14px;z-index:10;margin:22px auto 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a58cab;border-radius:16px;background:#261f2df2;color:#fff;box-shadow:0 12px 36px #0004;backdrop-filter:blur(10px)}.bulk-move-controls{display:flex;align-items:center;gap:8px}.bulk-move-controls select{min-width:170px;border:0}.bulk-move-controls button{padding:10px 13px;border:0;border-radius:10px;background:#fff;color:#35283a;font-weight:800}.bulk-move-controls .bulk-delete{background:#b9475e;color:#fff}.bulk-move-controls .bulk-cancel{background:transparent;color:#fff;border:1px solid #a58cab}.bulk-move-controls button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.bulk-move-bar{align-items:stretch;flex-direction:column;bottom:76px}.bulk-move-controls{display:grid;grid-template-columns:1fr auto auto}.bulk-move-controls .bulk-cancel{grid-column:1/-1}.session-check{width:46px}}`;
 document.head.append(bulkStyle);
@@ -153,6 +160,7 @@ let all = [],
     assistantName: "ChatGPT",
     replacements: "",
     theme: "light",
+    showModelNames: true,
     customFolders: [],
     customPersonas: [],
     folderPersonas: {},
@@ -329,6 +337,7 @@ async function load() {
         ? settings.folderPersonas
         : {};
     settings.theme = settings.theme === "dark" ? "dark" : "light";
+    settings.showModelNames = settings.showModelNames !== false;
     all.forEach((s) => {
       s.namedSelections = Array.isArray(s.namedSelections)
         ? s.namedSelections
@@ -345,10 +354,12 @@ async function load() {
   $("assistantName").value = settings.assistantName;
   $("replacements").value = settings.replacements;
   if ($("theme")) $("theme").value = settings.theme;
+  if ($("showModelNames")) $("showModelNames").checked = settings.showModelNames;
   applyTheme();
 }
 function applyTheme() {
   document.body.classList.toggle("dark", settings.theme === "dark");
+  document.body.classList.toggle("hide-model-names", settings.showModelNames === false);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = settings.theme === "dark" ? "#110e14" : "#261f2d";
 }
@@ -780,6 +791,27 @@ function renderViewer({updatePanel=true}={}) {
           `<button class="restore" data-mid="${esc(m.id)}">${esc(nameOf(m, s))}の発言を戻す</button>`,
       )
       .join("")}</details></article>`;
+  const titleMeta = $("viewer").querySelector(".title-row .meta");
+  if (titleMeta) {
+    titleMeta.textContent = date(s.time);
+    if (settings.showModelNames !== false) {
+      const modelSummary = document.createElement("span");
+      modelSummary.className = "session-models";
+      modelSummary.textContent = " · " + (s.models.join(", ") || "モデル不明");
+      titleMeta.append(modelSummary);
+    }
+  }
+  shown.forEach((message) => {
+    const label = document.getElementById("msg-" + message.id)?.querySelector(".label");
+    if (!label) return;
+    label.textContent = nameOf(message, s);
+    if (message.role === "assistant" && settings.showModelNames !== false) {
+      const modelName = document.createElement("span");
+      modelName.className = "message-model";
+      modelName.textContent = " · " + (message.model || "モデル不明");
+      label.append(modelName);
+    }
+  });
   if(updatePanel)renderSessionPanel();
   const addTopMemo = $("addTopMemo");
   if (addTopMemo) addTopMemo.onclick = () => openMemoEditor(s, null);
@@ -1943,6 +1975,7 @@ $("titleSearch").addEventListener("input", () => {
 $("settingsBtn").onclick = () => {
   renderManagers();
   updateBackupSummary();
+  $("showModelNames").checked = settings.showModelNames !== false;
   $("settings").showModal();
 };
 $("addFolder").onclick = () => addCustom("folder");
@@ -1991,6 +2024,7 @@ $("saveSettings").onclick = () => {
   settings = {
     ...settings,
     theme: $("theme").value === "dark" ? "dark" : "light",
+    showModelNames: $("showModelNames").checked,
     userName: $("userName").value.trim() || "ユーザー",
     assistantName: $("assistantName").value.trim() || "ChatGPT",
     replacements: $("replacements").value,
@@ -2513,7 +2547,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v55";
+document.querySelector(".app-version").textContent = "v56";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

@@ -2248,7 +2248,7 @@ const dlCss = document.createElement("style");
 dlCss.textContent = ".dl-tools,.dl-actions,.dl-export-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{margin:11px 0;padding:13px;border-radius:10px;background:var(--paper);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75}.dl-actions button,.dl-tools button,.dl-export-actions button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump,.dl-export-actions .dl-export-primary{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-warning-button{display:block;width:100%;border:1px solid #d7bd58;text-align:left;cursor:pointer;font:inherit;font-weight:800}.dl-warning-button span{display:block;margin-top:3px;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:2px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}.dl-month-export{padding:0 10px 4px}.dl-month-export .dl-export-actions{margin:6px 0}.dl-persona-export{padding:0 15px 3px}.dl-copy-done{border-color:var(--accent)!important;color:var(--accent)!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}.dl-export-actions{display:grid;grid-template-columns:1fr 1fr}.dl-export-actions button{min-width:0}}";
 document.head.append(dlCss);
 const dlGroupCss = document.createElement("style");
-dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}.dl-order{display:flex;align-items:center;gap:8px;margin-left:auto}.dl-order label{color:var(--muted);font-size:12px;font-weight:800}.dl-order select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-missing-summary{margin:0 10px 8px;padding:10px 12px;border:1px dashed var(--line);border-radius:11px;background:color-mix(in srgb,var(--paper) 72%,transparent)}.dl-missing-summary strong{display:block;margin-bottom:7px;color:var(--muted);font-size:12px}.dl-missing-dates{display:flex;flex-wrap:wrap;gap:5px}.dl-missing-chip{padding:4px 7px;border-radius:999px;background:var(--card);color:var(--muted);font-size:11px}.dl-missing-none{color:var(--muted);font-size:12px}.dl-missing-card{padding:11px 14px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--card) 58%,transparent);opacity:.78}.dl-missing-card h3{margin:3px 0;color:var(--muted);font-size:14px}.dl-missing-card .dl-kind{color:var(--muted)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}}";
+dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}.dl-order{display:flex;align-items:center;gap:8px;margin-left:auto}.dl-order label{color:var(--muted);font-size:12px;font-weight:800}.dl-order select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-calendar{margin:0 10px 10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--paper) 78%,transparent)}.dl-calendar-head,.dl-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.dl-calendar-head{margin-bottom:5px}.dl-calendar-head span{color:var(--muted);font-size:10px;font-weight:850;text-align:center}.dl-calendar-blank{min-height:38px}.dl-calendar-day{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:38px;padding:0;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--accent) 11%,var(--paper));color:var(--ink);font:800 12px/1 system-ui;cursor:pointer}.dl-calendar-day:hover{border-color:var(--accent)}.dl-calendar-day.is-missing{border-style:dashed;background:transparent;color:var(--muted);opacity:.58}.dl-calendar-day.is-missing::after{content:\"\";position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.dl-calendar-day.is-future{border-color:transparent;background:transparent;color:var(--muted);cursor:default;opacity:.24}.dl-calendar-day.is-today{box-shadow:inset 0 0 0 1px var(--accent)}.dl-day-anchor{border-radius:14px;scroll-margin-top:18px;transition:box-shadow .2s ease}.dl-day-anchor.is-calendar-target{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 48%,transparent)}.dl-missing-card{padding:11px 14px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--card) 58%,transparent);opacity:.78}.dl-missing-card h3{margin:3px 0;color:var(--muted);font-size:14px}.dl-missing-card .dl-kind{color:var(--muted)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}.dl-calendar{margin:0 8px 8px;padding:8px}.dl-calendar-head,.dl-calendar-grid{gap:3px}.dl-calendar-day,.dl-calendar-blank{min-height:34px}}";
 document.head.append(dlGroupCss);
 let dlCandidates = [];
 let dlCandidateMode = false;
@@ -2276,6 +2276,23 @@ function dlMissingDates(month, entries) {
   const registered = new Set(entries.map(entry => entry.date));
   return Array.from({ length: limit }, (_, index) => month + "-" + String(index + 1).padStart(2, "0")).filter(date => !registered.has(date));
 }
+function dlCalendar(month, entries, missing) {
+  if (!/^\d{4}-\d{2}$/.test(month)) return "";
+  const [year, monthNumber] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const firstWeekday = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
+  const today = dlTodayJst();
+  const registered = new Set(entries.map(entry => entry.date));
+  const missingSet = new Set(missing);
+  const cells = Array.from({ length: firstWeekday }, () => '<span class="dl-calendar-blank" aria-hidden="true"></span>');
+  for (let day = 1; day <= lastDay; day++) {
+    const date = month + "-" + String(day).padStart(2, "0");
+    const state = registered.has(date) ? "registered" : missingSet.has(date) ? "missing" : "future";
+    const label = state === "registered" ? "登録済み" : state === "missing" ? "未登録" : "まだ先の日付";
+    cells.push('<button type="button" class="dl-calendar-day is-' + state + (date === today ? ' is-today' : '') + '" ' + (state === "future" ? "disabled" : 'data-dlcal="' + esc(date) + '"') + ' aria-label="' + esc(date + "（" + label + "）") + '">' + day + '</button>');
+  }
+  return '<div class="dl-calendar"><div class="dl-calendar-head"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div class="dl-calendar-grid">' + cells.join("") + '</div></div>';
+}
 function dlMissingCard(date) {
   return '<article class="dl-missing-card"><span class="dl-kind">未登録</span><h3>' + esc(date) + '</h3></article>';
 }
@@ -2288,7 +2305,7 @@ function dlMonthTimeline(entries, missing) {
       if (a.missing !== b.missing) return a.missing ? 1 : -1;
       return a.index - b.index;
     })
-    .map(item => item.missing ? dlMissingCard(item.date) : dlCard(item.entry))
+    .map(item => '<div class="dl-day-anchor" data-dl-date-anchor="' + esc(item.date) + '">' + (item.missing ? dlMissingCard(item.date) : dlCard(item.entry)) + '</div>')
     .join("");
 }
 function dlExcluded() {
@@ -2536,8 +2553,8 @@ function dlGroupedRows(rows) {
       const label = month === "日付不明" ? month : month.slice(0, 4) + "年" + Number(month.slice(5, 7)) + "月";
       const key = persona + "::" + month;
       const missing = dlMissingDates(month, entries);
-      const missingSummary = month === "日付不明" ? "" : '<div class="dl-missing-summary"><strong>未登録の日 ' + missing.length + '日</strong>' + (missing.length ? '<div class="dl-missing-dates">' + missing.map(date => '<span class="dl-missing-chip">' + esc(date) + '</span>').join("") + '</div>' : '<span class="dl-missing-none">未登録の日はありません。</span>') + '</div>';
-      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件・未登録 ' + missing.length + '日　⌄</span></summary><div class="dl-month-export"><div class="dl-export-actions"><button data-dlx-json="' + esc(key) + '">JSON</button><button data-dlx-md="' + esc(key) + '">Markdown</button><button class="dl-export-primary" data-dlx-copy="' + esc(key) + '">テキストコピー</button></div></div>' + missingSummary + '<div class="dl-month-list">' + dlMonthTimeline(entries, missing) + '</div></details>';
+      const calendar = month === "日付不明" ? "" : dlCalendar(month, entries, missing);
+      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件・未登録 ' + missing.length + '日　⌄</span></summary><div class="dl-month-export"><div class="dl-export-actions"><button data-dlx-json="' + esc(key) + '">JSON</button><button data-dlx-md="' + esc(key) + '">Markdown</button><button class="dl-export-primary" data-dlx-copy="' + esc(key) + '">テキストコピー</button></div></div>' + calendar + '<div class="dl-month-list">' + dlMonthTimeline(entries, missing) + '</div></details>';
     }).join("");
     return '<details class="dl-persona" open><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-persona-export"><div class="dl-export-actions"><button class="dl-export-primary" data-dlx-zip="' + esc(persona) + '">このペルソナをZIP出力</button></div></div><div class="dl-months">' + monthHtml + '</div></details>';
   }).join("");
@@ -2564,6 +2581,14 @@ function dlRender() {
     };
   }
   document.querySelectorAll("[data-dldup]").forEach(b => b.onclick = () => dlShowDuplicate(dlCandidates.find(x => x.id === b.dataset.dldup)));
+  document.querySelectorAll("[data-dlcal]").forEach(button => button.onclick = () => {
+    const target = button.closest(".dl-month")?.querySelector('[data-dl-date-anchor="' + CSS.escape(button.dataset.dlcal) + '"]');
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.classList.remove("is-calendar-target");
+    requestAnimationFrame(() => target.classList.add("is-calendar-target"));
+    setTimeout(() => target.classList.remove("is-calendar-target"), 1400);
+  });
   document.querySelectorAll("[data-dlc]").forEach(b => b.onclick = () => dlEditor(null, dlCandidates.find(x => x.id === b.dataset.dlc)));
   document.querySelectorAll("[data-dlx]").forEach(b => b.onclick = async () => {
     const candidate = dlCandidates.find(x => x.id === b.dataset.dlx);
@@ -2621,7 +2646,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v58";
+document.querySelector(".app-version").textContent = "v59";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

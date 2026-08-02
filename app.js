@@ -2239,7 +2239,15 @@ const maS=document.createElement("style");maS.textContent=".memory-entry{display
 const maI=()=>memoryItems(),maT=m=>Array.isArray(m.tags)?m.tags:[],maR=m=>Array.isArray(m.relatedMemoryIds)?m.relatedMemoryIds:[],maF=id=>maI().find(x=>x.memory.id===id);
 function maE(m){document.querySelector("#maDialog")?.remove();const c=new Set(maR(m)),d=document.createElement("dialog");d.id="maDialog";d.className="ma-dialog";d.innerHTML=`<form method="dialog"><div class="dialog-head"><h2>コメント・タグ・関連</h2><button value="cancel" class="icon-btn">×</button></div><label>メモ<textarea id="maC">${esc(m.comment||"")}</textarea></label><label>タグ<input id="maT" value="${esc(maT(m).join(", "))}" placeholder="カンマ・読点・改行で区切る"></label><label>関連する思い出</label><div class="ma-p">${maI().filter(x=>x.memory.id!==m.id).map(x=>`<label class="ma-o"><input type="checkbox" value="${esc(x.memory.id)}" ${c.has(x.memory.id)?"checked":""}><span><strong>${esc(x.memory.title)}</strong><small>${esc(memoryDate(x.session,x.memory)||"日付なし")} · ${esc(memoryFolder(x.session,x.memory))}</small></span></label>`).join("")||"ほかの思い出はありません。"}</div><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="maSave" type="button">保存</button></div></form>`;document.body.append(d);d.addEventListener("close",()=>d.remove(),{once:true});d.querySelector("#maSave").onclick=async()=>{m.comment=d.querySelector("#maC").value.trim();m.tags=[...new Set(d.querySelector("#maT").value.split(/[、,，\n]/).map(x=>x.trim()).filter(Boolean))];m.relatedMemoryIds=[...d.querySelectorAll(".ma-o input:checked")].map(x=>x.value);await save();d.close();renderMemories()};d.showModal()}
 function maCard(s,m){const r=maR(m).map(maF).filter(Boolean);return `<details class="memory-entry"><summary class="ma-s"><span><strong>${esc(m.title)}${memoryDate(s,m)?` <small>${esc(memoryDate(s,m))}</small>`:""}</strong><small>${esc(replaceText(s.title))} · ${m.messageIds.length}件</small></span><span class="ma-a">⌄</span></summary><div class="ma-d">${m.comment?`<div class="ma-c">${esc(m.comment)}</div>`:""}${maT(m).length?`<div class="ma-t">${maT(m).map(x=>`<span class="ma-tag">#${esc(x)}</span>`).join("")}</div>`:""}${r.length?`<div class="ma-r"><small>関連：</small>${r.map(x=>`<button data-mar="${esc(x.memory.id)}">${esc(x.memory.title)}</button>`).join("")}</div>`:""}<div class="memory-actions"><button class="ma-open" data-mao="${esc(m.id)}">元の位置で見る</button><button data-map="${esc(m.id)}">プレビュー</button><button class="ma-edit" data-mae="${esc(m.id)}">コメント・タグ</button><button data-maj="${esc(m.id)}">JSON出力</button><button data-mac="${esc(m.id)}">内容編集</button><button data-man="${esc(m.id)}">名前変更</button><button class="memory-delete" data-mad="${esc(m.id)}">削除</button></div></div></details>`}
-const rm47=renderMemories;renderMemories=function(){rm47();if(!currentMemoryFolder)return;const a=maI().filter(x=>memoryFolder(x.session,x.memory)===currentMemoryFolder),l=document.querySelector(".memory-list");if(!l||!a.length)return;l.innerHTML=a.map(x=>maCard(x.session,x.memory)).join("");document.querySelector(".browser-heading .muted").textContent="タイトルをタップすると、コメントと操作を開きます。";
+const memoryYearStyle=document.createElement("style");
+memoryYearStyle.textContent=".memory-years{display:grid;gap:10px}.memory-year{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.memory-year-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;cursor:pointer;list-style:none;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.memory-year-summary::-webkit-details-marker{display:none}.memory-year-summary strong{font-size:16px}.memory-year-summary span{color:var(--muted);font-size:12px;font-weight:800}.memory-year-list{display:grid;gap:10px;padding:10px}";
+document.head.append(memoryYearStyle);
+function maYearGroups(items){
+ const years=new Map();
+ items.forEach(x=>{const day=memoryDate(x.session,x.memory),year=/^\d{4}-/.test(day)?day.slice(0,4):"日付不明";if(!years.has(year))years.set(year,[]);years.get(year).push(x)});
+ return Array.from(years.entries()).sort((a,b)=>a[0]==="日付不明"?1:b[0]==="日付不明"?-1:b[0].localeCompare(a[0])).map(([year,rows])=>`<details class="memory-year"><summary class="memory-year-summary"><strong>${esc(year==="日付不明"?year:year+"年")}</strong><span>${rows.length}件　⌄</span></summary><div class="memory-year-list">${rows.map(x=>maCard(x.session,x.memory)).join("")}</div></details>`).join("")
+}
+const rm47=renderMemories;renderMemories=function(){rm47();if(!currentMemoryFolder)return;const a=maI().filter(x=>memoryFolder(x.session,x.memory)===currentMemoryFolder),l=document.querySelector(".memory-list");if(!l||!a.length)return;l.classList.add("memory-years");l.innerHTML=maYearGroups(a);document.querySelector(".browser-heading .muted").textContent="年ごとに開き、思い出のタイトルをタップするとコメントと操作を開きます。";
  document.querySelectorAll("[data-mao]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mao);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mar]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mar);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mae]").forEach(b=>b.onclick=()=>maE(maF(b.dataset.mae).memory));document.querySelectorAll("[data-map]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.map);showMemoryPreview(x.session,x.memory)});document.querySelectorAll("[data-maj]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.maj);exportMemoryJson(x.session,x.memory)});document.querySelectorAll("[data-mac]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mac);openMemory(x.session.id,x.memory.id);editingMemoryId=x.memory.id;messageSelected=new Set(x.memory.messageIds);messageSelectionAnchor=x.memory.messageIds.at(-1)||"";renderViewer()});document.querySelectorAll("[data-man]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.man),t=prompt("思い出の名前を変更",x.memory.title);if(!t?.trim()||t.trim()===x.memory.title)return;x.memory.title=t.trim();await save();renderMemories()});document.querySelectorAll("[data-mad]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.mad);if(!confirm(`思い出「${x.memory.title}」を削除しますか？`))return;x.session.namedSelections=x.session.namedSelections.filter(m=>m.id!==x.memory.id);all.forEach(s=>(s.namedSelections||[]).forEach(m=>{if(Array.isArray(m.relatedMemoryIds))m.relatedMemoryIds=m.relatedMemoryIds.filter(id=>id!==x.memory.id)}));await save();renderMemories()})};
 const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,m);x.memory.comment=m.comment||"";x.memory.tags=maT(m);x.memory.relatedMemoryIds=maR(m);return x};
 
@@ -2314,6 +2322,14 @@ function dlExcluded() {
 }
 function dlSourceKey(entry) {
   return (entry.sessionId || "") + "::" + (entry.messageId || "");
+}
+async function dlExcludeCandidate(candidate) {
+  if (!candidate) return;
+  if (!dlExcluded().some(x => dlSourceKey(x) === dlSourceKey(candidate))) {
+    dlExcluded().push({ sessionId: candidate.sessionId, messageId: candidate.messageId, date: candidate.date, persona: candidate.persona, kind: candidate.kind, preview: candidate.body.slice(0, 160), excludedAt: Date.now() });
+  }
+  dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
+  await save();
 }
 function dlDate(time, minus) {
   if (!time) return "";
@@ -2442,7 +2458,7 @@ function dlEditor(item, candidate) {
   const d = document.createElement("dialog");
   d.id = "dlEditor";
   d.className = "dl-dialog";
-  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
   document.body.append(d);
   d.querySelector("#dlKind").value = base.kind;
   d.addEventListener("close", () => d.remove(), { once: true });
@@ -2461,6 +2477,15 @@ function dlEditor(item, candidate) {
       d.querySelector("#dlBody").focus();
     };
   }
+  d.querySelector("#dlRejectCandidate")?.addEventListener("click", async () => {
+    await dlExcludeCandidate(candidate);
+    d.close();
+    dlCandidateMode = true;
+    viewMode = "diaries";
+    selected = "";
+    renderList();
+    dlRender();
+  });
   d.querySelector("#dlSave").onclick = async () => {
     const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");
@@ -2554,9 +2579,9 @@ function dlGroupedRows(rows) {
       const key = persona + "::" + month;
       const missing = dlMissingDates(month, entries);
       const calendar = month === "日付不明" ? "" : dlCalendar(month, entries, missing);
-      return '<details class="dl-month" ' + (monthIndex === 0 ? "open" : "") + '><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件・未登録 ' + missing.length + '日　⌄</span></summary><div class="dl-month-export"><div class="dl-export-actions"><button data-dlx-json="' + esc(key) + '">JSON</button><button data-dlx-md="' + esc(key) + '">Markdown</button><button class="dl-export-primary" data-dlx-copy="' + esc(key) + '">テキストコピー</button></div></div>' + calendar + '<div class="dl-month-list">' + dlMonthTimeline(entries, missing) + '</div></details>';
+      return '<details class="dl-month"><summary class="dl-month-summary"><strong>' + esc(label) + '</strong><span class="dl-group-count">' + entries.length + '件・未登録 ' + missing.length + '日　⌄</span></summary><div class="dl-month-export"><div class="dl-export-actions"><button data-dlx-json="' + esc(key) + '">JSON</button><button data-dlx-md="' + esc(key) + '">Markdown</button><button class="dl-export-primary" data-dlx-copy="' + esc(key) + '">テキストコピー</button></div></div>' + calendar + '<div class="dl-month-list">' + dlMonthTimeline(entries, missing) + '</div></details>';
     }).join("");
-    return '<details class="dl-persona" open><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-persona-export"><div class="dl-export-actions"><button class="dl-export-primary" data-dlx-zip="' + esc(persona) + '">このペルソナをZIP出力</button></div></div><div class="dl-months">' + monthHtml + '</div></details>';
+    return '<details class="dl-persona"><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-persona-export"><div class="dl-export-actions"><button class="dl-export-primary" data-dlx-zip="' + esc(persona) + '">このペルソナをZIP出力</button></div></div><div class="dl-months">' + monthHtml + '</div></details>';
   }).join("");
 }
 function dlRender() {
@@ -2592,12 +2617,7 @@ function dlRender() {
   document.querySelectorAll("[data-dlc]").forEach(b => b.onclick = () => dlEditor(null, dlCandidates.find(x => x.id === b.dataset.dlc)));
   document.querySelectorAll("[data-dlx]").forEach(b => b.onclick = async () => {
     const candidate = dlCandidates.find(x => x.id === b.dataset.dlx);
-    if (!candidate) return;
-    if (!dlExcluded().some(x => dlSourceKey(x) === dlSourceKey(candidate))) {
-      dlExcluded().push({ sessionId: candidate.sessionId, messageId: candidate.messageId, date: candidate.date, persona: candidate.persona, kind: candidate.kind, preview: candidate.body.slice(0, 160), excludedAt: Date.now() });
-    }
-    dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
-    await save();
+    await dlExcludeCandidate(candidate);
     dlRender();
   });
   document.querySelectorAll("[data-dlr]").forEach(b => b.onclick = async () => {
@@ -2646,7 +2666,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v59";
+document.querySelector(".app-version").textContent = "v60";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

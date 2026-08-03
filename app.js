@@ -2458,7 +2458,7 @@ const dlCss = document.createElement("style");
 dlCss.textContent = ".dl-tools,.dl-actions,.dl-export-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{margin:11px 0;padding:13px;border-radius:10px;background:var(--paper);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75}.dl-actions button,.dl-tools button,.dl-export-actions button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump,.dl-export-actions .dl-export-primary{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-warning-button{display:block;width:100%;border:1px solid #d7bd58;text-align:left;cursor:pointer;font:inherit;font-weight:800}.dl-warning-button span{display:block;margin-top:3px;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:2px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-fields label{min-width:0}.dl-editor-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:8px}.dl-editor-actions button{width:100%;min-width:0;min-height:54px;padding:9px 6px;line-height:1.35}input[type=\"date\"],input[type=\"datetime-local\"],input[type=\"month\"]{display:block;width:100%;min-width:0;max-width:100%}input[type=\"date\"]::-webkit-date-and-time-value,input[type=\"datetime-local\"]::-webkit-date-and-time-value,input[type=\"month\"]::-webkit-date-and-time-value{min-width:0;text-align:center}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}.dl-month-export{padding:0 10px 4px}.dl-month-export .dl-export-actions{margin:6px 0}.dl-persona-export{padding:0 15px 3px}.dl-copy-done{border-color:var(--accent)!important;color:var(--accent)!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}.dl-export-actions{display:grid;grid-template-columns:1fr 1fr}.dl-export-actions button{min-width:0}.dl-editor-actions button{font-size:14px}}";
 document.head.append(dlCss);
 const dlGroupCss = document.createElement("style");
-dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}.dl-order{display:flex;align-items:center;gap:8px;margin-left:auto}.dl-order label{color:var(--muted);font-size:12px;font-weight:800}.dl-order select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-calendar{margin:0 10px 10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--paper) 78%,transparent)}.dl-calendar-head,.dl-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.dl-calendar-head{margin-bottom:5px}.dl-calendar-head span{color:var(--muted);font-size:10px;font-weight:850;text-align:center}.dl-calendar-blank{min-height:38px}.dl-calendar-day{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:38px;padding:0;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--accent) 11%,var(--paper));color:var(--ink);font:800 12px/1 system-ui;cursor:pointer}.dl-calendar-day:hover{border-color:var(--accent)}.dl-calendar-day.is-missing{border-style:dashed;background:transparent;color:var(--muted);opacity:.58}.dl-calendar-day.is-missing::after{content:\"\";position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.dl-calendar-day.is-future{border-color:transparent;background:transparent;color:var(--muted);cursor:default;opacity:.24}.dl-calendar-day.is-today{box-shadow:inset 0 0 0 1px var(--accent)}.dl-day-anchor{border-radius:14px;scroll-margin-top:18px;transition:box-shadow .2s ease}.dl-day-anchor.is-calendar-target{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 48%,transparent)}.dl-missing-card{padding:11px 14px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--card) 58%,transparent);opacity:.78}.dl-missing-card h3{margin:3px 0;color:var(--muted);font-size:14px}.dl-missing-card .dl-kind{color:var(--muted)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}.dl-calendar{margin:0 8px 8px;padding:8px}.dl-calendar-head,.dl-calendar-grid{gap:3px}.dl-calendar-day,.dl-calendar-blank{min-height:34px}}";
+dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}.dl-order{display:flex;align-items:center;gap:8px;margin-left:auto}.dl-order label{color:var(--muted);font-size:12px;font-weight:800}.dl-order select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-calendar{margin:0 10px 10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--paper) 78%,transparent)}.dl-calendar-head,.dl-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.dl-calendar-head{margin-bottom:5px}.dl-calendar-head span{color:var(--muted);font-size:10px;font-weight:850;text-align:center}.dl-calendar-blank{min-height:38px}.dl-calendar-day{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:38px;padding:0;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--accent) 11%,var(--paper));color:var(--ink);font:800 12px/1 system-ui;cursor:pointer}.dl-calendar-day:hover{border-color:var(--accent)}.dl-calendar-day.is-multiple{border-color:#c08d32;background:color-mix(in srgb,#c08d32 18%,var(--paper));box-shadow:inset 0 0 0 1px color-mix(in srgb,#c08d32 35%,transparent)}.dl-calendar-count{position:absolute;top:2px;right:2px;display:grid;place-items:center;min-width:14px;height:14px;padding:0 3px;border-radius:999px;background:#a96816;color:#fff;font:850 9px/1 system-ui}.dl-calendar-day.is-missing{border-style:dashed;background:transparent;color:var(--muted);opacity:.58}.dl-calendar-day.is-missing::after{content:\"\";position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.dl-calendar-day.is-future{border-color:transparent;background:transparent;color:var(--muted);cursor:default;opacity:.24}.dl-calendar-day.is-today{box-shadow:inset 0 0 0 1px var(--accent)}.dl-day-anchor{border-radius:14px;scroll-margin-top:18px;transition:box-shadow .2s ease}.dl-day-anchor.is-calendar-target{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 48%,transparent)}.dl-missing-card{padding:11px 14px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--card) 58%,transparent);opacity:.78}.dl-missing-card h3{margin:3px 0;color:var(--muted);font-size:14px}.dl-missing-card .dl-kind{color:var(--muted)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}.dl-calendar{margin:0 8px 8px;padding:8px}.dl-calendar-head,.dl-calendar-grid{gap:3px}.dl-calendar-day,.dl-calendar-blank{min-height:34px}}";
 document.head.append(dlGroupCss);
 const dlTemplateCss = document.createElement("style");
 dlTemplateCss.textContent = `.dl-template-help{margin:12px 0 16px;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}.dl-template-help>summary{padding:12px 14px;color:var(--accent);font-weight:850;cursor:pointer}.dl-template-content{display:grid;gap:10px;padding:0 14px 14px}.dl-template-content>p{margin:0}.dl-template-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.dl-template-card{display:grid;gap:7px;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--paper)}.dl-template-card pre{margin:0;padding:9px;border-radius:8px;background:var(--card);white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-template-card button{min-height:36px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-template-legacy{padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.65}`;
@@ -2501,14 +2501,16 @@ function dlCalendar(month, entries, missing) {
   const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   const firstWeekday = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
   const today = dlTodayJst();
-  const registered = new Set(entries.map(entry => entry.date));
+  const registeredCounts = new Map();
+  entries.forEach(entry => registeredCounts.set(entry.date, (registeredCounts.get(entry.date) || 0) + 1));
   const missingSet = new Set(missing);
   const cells = Array.from({ length: firstWeekday }, () => '<span class="dl-calendar-blank" aria-hidden="true"></span>');
   for (let day = 1; day <= lastDay; day++) {
     const date = month + "-" + String(day).padStart(2, "0");
-    const state = registered.has(date) ? "registered" : missingSet.has(date) ? "missing" : "future";
-    const label = state === "registered" ? "登録済み" : state === "missing" ? "未登録" : "まだ先の日付";
-    cells.push('<button type="button" class="dl-calendar-day is-' + state + (date === today ? ' is-today' : '') + '" ' + (state === "future" ? "disabled" : 'data-dlcal="' + esc(date) + '"') + ' aria-label="' + esc(date + "（" + label + "）") + '">' + day + '</button>');
+    const count = registeredCounts.get(date) || 0;
+    const state = count ? "registered" : missingSet.has(date) ? "missing" : "future";
+    const label = count ? "登録済み" + count + "件" : state === "missing" ? "未登録" : "まだ先の日付";
+    cells.push('<button type="button" class="dl-calendar-day is-' + state + (count > 1 ? ' is-multiple' : '') + (date === today ? ' is-today' : '') + '" ' + (state === "future" ? "disabled" : 'data-dlcal="' + esc(date) + '"') + ' aria-label="' + esc(date + "（" + label + "）") + '">' + day + (count > 1 ? '<span class="dl-calendar-count" aria-hidden="true">' + count + '</span>' : '') + '</button>');
   }
   return '<div class="dl-calendar"><div class="dl-calendar-head"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div class="dl-calendar-grid">' + cells.join("") + '</div></div>';
 }
@@ -2651,8 +2653,7 @@ function dlScan() {
     const hay = answer + " " + ask;
     const stated = marked?.date || legacyDelimited?.date || dlExplicit(answer), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay));
     const persona = marked?.persona || effectivePersona(s), personaId = marked?.personaId || personaIdFor(persona);
-    const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && dlEntryPersona(x) === personaDisplay(personaId || persona));
-    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: marked?.body || legacyDelimited?.body || dlBody(answer, kind), persona: personaDisplay(personaId || persona), personaId, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: answer, extraction: marked ? "emoji" : legacyDelimited ? "legacy-delimited" : "legacy", explicitKind: Boolean(marked || legacyDelimited || answerKind), warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
+    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: marked?.body || legacyDelimited?.body || dlBody(answer, kind), persona: personaDisplay(personaId || persona), personaId, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: answer, extraction: marked ? "emoji" : legacyDelimited ? "legacy-delimited" : "legacy", explicitKind: Boolean(marked || legacyDelimited || answerKind), warning: "" });
   }));
   const unique = new Map();
   found.forEach(candidate => {
@@ -2664,16 +2665,24 @@ function dlScan() {
     delete candidate.explicitKind;
     return candidate;
   }).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  dlRefreshCandidateWarnings();
   dlCandidateMode = true;
   dlRender();
 }
-function dlMatchingEntries(candidate) {
+function dlMatchingEntries(candidate, excludeId) {
   if (!candidate) return [];
   return dlList().filter(entry =>
+    entry.id !== excludeId &&
     entry.kind === candidate.kind &&
     entry.date === candidate.date &&
     dlEntryPersona(entry) === personaDisplay(candidate.personaId || candidate.persona)
   );
+}
+function dlRefreshCandidateWarnings() {
+  dlCandidates.forEach(candidate => {
+    const count = dlMatchingEntries(candidate).length;
+    candidate.warning = count ? "同じ日付・種別・ペルソナの日記が" + count + "件登録済みです。" : "";
+  });
 }
 function dlShowDuplicate(candidate) {
   document.querySelector("#dlDuplicateViewer")?.remove();
@@ -2751,10 +2760,13 @@ function dlEditor(item, candidate) {
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");
     const persona = d.querySelector("#dlPersona").value.trim();
     const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
+    const duplicates = dlMatchingEntries(entry, entry.id);
+    if (duplicates.length && !confirm("同じ日付・種別・ペルソナの日記が" + duplicates.length + "件登録済みです。\n\nそれでも保存しますか？")) return;
     const list = dlList(), index = list.findIndex(x => x.id === entry.id);
     if (index >= 0) list[index] = entry; else list.push(entry);
     if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
     await save();
+    dlRefreshCandidateWarnings();
     d.close();
     viewMode = "diaries";
     selected = "";
@@ -2934,6 +2946,7 @@ function dlRender() {
     if (!entry || !confirm(entry.date + " の日記を削除しますか？")) return;
     settings.diaryEntries = dlList().filter(x => x.id !== entry.id);
     await save();
+    dlRefreshCandidateWarnings();
     dlRender();
   });
 }
@@ -2944,7 +2957,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v62";
+document.querySelector(".app-version").textContent = "v63";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

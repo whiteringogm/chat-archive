@@ -139,6 +139,88 @@ const STORE = "seishi-archive-v2",
     "🔦 ひかちゃん",
     "未分類",
   ];
+function defaultPersonaProfiles() {
+  return [
+    { id: "persona-kage", emoji: "🕯️", emojiAliases: ["🕯"], displayName: "🕯️ かげちゃん", identifier: "影山誠実", aliases: ["かげちゃん", "🕯️かげちゃん", "🕯かげちゃん", "🕯 かげちゃん"] },
+    { id: "persona-man", emoji: "🌕", emojiAliases: [], displayName: "🌕 まんちゃん", identifier: "温間満月", aliases: ["まんちゃん", "🌕まんちゃん"] },
+    { id: "persona-hika", emoji: "🔦", emojiAliases: [], displayName: "🔦 ひかちゃん", identifier: "光谷虚実", aliases: ["ひかちゃん", "🔦ひかちゃん"] },
+  ];
+}
+function personaTextKey(value) {
+  return String(value || "").normalize("NFKC").replace(/\uFE0F/g, "").replace(/\s+/g, "").toLowerCase();
+}
+function personaEmojiKey(value) {
+  return String(value || "").normalize("NFKC").replace(/\uFE0F/g, "").replace(/\s+/g, "");
+}
+function inferredPersonaEmoji(value) {
+  const first = String(value || "").trim().split(/\s+/)[0] || "";
+  return /[^\p{L}\p{N}\p{P}\p{Z}]/u.test(first) ? first : "";
+}
+function normalizePersonaProfile(profile, index = 0) {
+  const displayName = String(profile?.displayName || profile?.name || "").trim();
+  const identifier = String(profile?.identifier || displayName.replace(/^\S+\s*/, "") || displayName).trim();
+  return {
+    id: String(profile?.id || `persona-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`),
+    emoji: String(profile?.emoji || inferredPersonaEmoji(displayName)).trim(),
+    emojiAliases: [...new Set((Array.isArray(profile?.emojiAliases) ? profile.emojiAliases : []).map(x => String(x).trim()).filter(Boolean))],
+    displayName,
+    identifier,
+    aliases: [...new Set((Array.isArray(profile?.aliases) ? profile.aliases : []).map(x => String(x).trim()).filter(Boolean))],
+  };
+}
+function ensurePersonaProfiles() {
+  if (!Array.isArray(settings.personaProfiles)) {
+    const legacyCustom = Array.isArray(settings.customPersonas) ? settings.customPersonas : [];
+    settings.personaProfiles = defaultPersonaProfiles().concat(legacyCustom
+      .filter(name => !BUILTIN_PERSONAS.includes(name) && name !== "未分類")
+      .map((name, index) => normalizePersonaProfile({
+        id: `persona-custom-${index}-${personaTextKey(name) || Date.now()}`,
+        displayName: name,
+        identifier: String(name).replace(/^\S+\s*/, "") || name,
+        aliases: [name],
+      }, index)));
+  } else {
+    settings.personaProfiles = settings.personaProfiles
+      .map(normalizePersonaProfile)
+      .filter(profile => profile.displayName && profile.identifier);
+  }
+  const ids = new Set();
+  settings.personaProfiles.forEach((profile, index) => {
+    if (ids.has(profile.id)) profile.id = `${profile.id}-${index}`;
+    ids.add(profile.id);
+  });
+  settings.customPersonas = settings.personaProfiles
+    .filter(profile => !profile.id.startsWith("persona-kage") && !profile.id.startsWith("persona-man") && !profile.id.startsWith("persona-hika"))
+    .map(profile => profile.displayName);
+  return settings.personaProfiles;
+}
+function personaProfiles() {
+  if (!Array.isArray(settings.personaProfiles)) ensurePersonaProfiles();
+  return settings.personaProfiles;
+}
+function personaProfileFor(value) {
+  const raw = String(value || "");
+  const key = personaTextKey(raw);
+  if (!key) return null;
+  return personaProfiles().find(profile =>
+    profile.id === raw ||
+    [profile.displayName, profile.identifier, ...(profile.aliases || [])].some(name => personaTextKey(name) === key)
+  ) || null;
+}
+function personaProfileForEmoji(value) {
+  const key = personaEmojiKey(value);
+  if (!key) return null;
+  return personaProfiles().find(profile =>
+    [profile.emoji, ...(profile.emojiAliases || [])].some(emoji => personaEmojiKey(emoji) === key)
+  ) || null;
+}
+function personaDisplay(value) {
+  if (!value || value === "未分類") return "未分類";
+  return personaProfileFor(value)?.displayName || String(value);
+}
+function personaIdFor(value) {
+  return personaProfileFor(value)?.id || "";
+}
 let all = [],
   selected = "",
   currentFolder = "",
@@ -163,6 +245,7 @@ let all = [],
     showModelNames: true,
     customFolders: [],
     customPersonas: [],
+    personaProfiles: null,
     folderPersonas: {},
     defaultsVersion: 4,
   };
@@ -249,9 +332,9 @@ function guessPersona(c, msgs) {
       .map((x) => x.text)
       .join("\n")
   ).toLowerCase();
-  if (/まんちゃん|温間満月/.test(hay)) return "🌕 まんちゃん";
-  if (/かげちゃん|影山誠実/.test(hay)) return "🕯️ かげちゃん";
-  if (/ひかちゃん|光谷虚実/.test(hay)) return "🔦 ひかちゃん";
+  if (/まんちゃん|温間満月/.test(hay)) return personaProfileFor("persona-man")?.displayName || "未分類";
+  if (/かげちゃん|影山誠実/.test(hay)) return personaProfileFor("persona-kage")?.displayName || "未分類";
+  if (/ひかちゃん|光谷虚実/.test(hay)) return personaProfileFor("persona-hika")?.displayName || "未分類";
   return "未分類";
 }
 function normalize(raw) {
@@ -290,6 +373,7 @@ function merge(incoming) {
     });
     fresh.folder = old.folder || "未分類";
     fresh.persona = old.persona || fresh.persona;
+    fresh.personaId = old.personaId || personaIdFor(fresh.persona);
     fresh.namedSelections = Array.isArray(old.namedSelections)
       ? old.namedSelections
       : [];
@@ -332,6 +416,7 @@ async function load() {
     settings.customPersonas = Array.isArray(settings.customPersonas)
       ? settings.customPersonas
       : [];
+    ensurePersonaProfiles();
     settings.folderPersonas =
       settings.folderPersonas && typeof settings.folderPersonas === "object"
         ? settings.folderPersonas
@@ -339,6 +424,7 @@ async function load() {
     settings.theme = settings.theme === "dark" ? "dark" : "light";
     settings.showModelNames = settings.showModelNames !== false;
     all.forEach((s) => {
+      s.personaId = personaIdFor(s.personaId || s.persona);
       s.namedSelections = Array.isArray(s.namedSelections)
         ? s.namedSelections
         : [];
@@ -346,6 +432,9 @@ async function load() {
         if (!memory.folder) memory.folder = s.folder || "未分類";
       });
       s.notes = Array.isArray(s.notes) ? s.notes : [];
+    });
+    if (Array.isArray(settings.diaryEntries)) settings.diaryEntries.forEach(entry => {
+      entry.personaId = personaIdFor(entry.personaId || entry.persona);
     });
   } catch (err) {
     console.error(err);
@@ -364,7 +453,8 @@ function applyTheme() {
   if (meta) meta.content = settings.theme === "dark" ? "#110e14" : "#261f2d";
 }
 function effectivePersona(s) {
-  return settings.folderPersonas[s.folder || "未分類"] || s.persona || "未分類";
+  const folderPersona = settings.folderPersonas[s.folder || "未分類"];
+  return personaDisplay(folderPersona || s.personaId || s.persona || "未分類");
 }
 function replaceText(text) {
   let out = String(text ?? "");
@@ -769,12 +859,12 @@ function renderViewer({updatePanel=true}={}) {
     chosen = shown.filter((m) => messageSelected.has(m.id)),
     active = s.namedSelections.find((x) => x.id === activeNamedSelection),
     activeIds = new Set(active?.messageIds || []),
-    folderFixed = settings.folderPersonas[s.folder || "未分類"] || "";
+    folderFixed = personaDisplay(settings.folderPersonas[s.folder || "未分類"] || "");
   $("viewer").innerHTML =
     `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="addTopMemo">＋ 冒頭にメモ</button><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="editNamedSelection">会話を追加・除去</button><button id="renameNamedSelection">名前を変更</button><button id="deleteNamedSelection" class="memory-remove">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
       .map(
         (x) =>
-          `<option ${x === s.persona ? "selected" : ""}>${esc(x)}</option>`,
+          `<option ${x === personaDisplay(s.personaId || s.persona) ? "selected" : ""}>${esc(x)}</option>`,
       )
       .join(
         "",
@@ -897,6 +987,7 @@ function renderViewer({updatePanel=true}={}) {
   };
   $("sessionPersona").onchange = (e) => {
     s.persona = e.target.value;
+    s.personaId = personaIdFor(e.target.value);
     save();
     rebuildFilters();
     renderList();
@@ -1127,9 +1218,9 @@ function renderViewer({updatePanel=true}={}) {
 function personaOptions() {
   return [
     ...new Set([
-      ...BUILTIN_PERSONAS,
-      ...settings.customPersonas,
-      ...activeSessions().map((x) => x.persona).filter(Boolean),
+      ...personaProfiles().map(profile => profile.displayName),
+      "未分類",
+      ...activeSessions().map((x) => personaDisplay(x.personaId || x.persona)).filter(Boolean),
     ]),
   ];
 }
@@ -1448,7 +1539,7 @@ function memoryExportPayload(session, memory) {
       title: session.title,
       createdAt: session.time || null,
       folder: memoryFolder(session, memory),
-      persona: session.persona || "未分類",
+      persona: effectivePersona(session),
     },
     messages: session.messages
       .filter((message) => ids.has(message.id) && !message.hidden)
@@ -1817,7 +1908,7 @@ function renderFolderSessions(folder) {
     destinations = folderOptions().filter((x) => x !== folder);
   $("viewer").scrollTop = 0;
   $("viewer").innerHTML =
-    `<section class="archive-browser has-bulk-bar"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>${esc(folder)}</strong></nav><div class="browser-heading"><div><h2>${esc(folder)}</h2><p class="muted">${rows.length} セッション</p></div>${rows.length ? `<button id="toggleAllSessions" class="select-all">${chosen.length === rows.length ? "選択を解除" : "すべて選択"}</button>` : ""}</div><div class="browser-sessions">${rows.map((s) => `<div class="browser-session-row ${bulkSelected.has(s.id) ? "selected" : ""}"><label class="session-check" aria-label="${esc(replaceText(s.title))}を選択"><input type="checkbox" data-select-id="${esc(s.id)}" ${bulkSelected.has(s.id) ? "checked" : ""}><span></span></label><button class="browser-session" data-id="${esc(s.id)}"><span><strong>${esc(replaceText(s.title))}</strong><small>${esc(date(s.time))} · ${esc(s.persona)}</small></span><span class="chevron">›</span></button></div>`).join("") || '<p class="muted">このフォルダは空です。</p>'}</div>${chosen.length ? `<div class="bulk-move-bar"><strong>${chosen.length}件を選択中</strong><div class="bulk-move-controls"><select id="bulkFolder" aria-label="移動先フォルダ">${destinations.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select><button id="moveSessions" ${destinations.length ? "" : "disabled"}>まとめて移動</button><button id="deleteSessions" class="bulk-delete">削除</button><button id="cancelBulk" class="bulk-cancel">解除</button></div></div>` : ""}</section>`;
+    `<section class="archive-browser has-bulk-bar"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>${esc(folder)}</strong></nav><div class="browser-heading"><div><h2>${esc(folder)}</h2><p class="muted">${rows.length} セッション</p></div>${rows.length ? `<button id="toggleAllSessions" class="select-all">${chosen.length === rows.length ? "選択を解除" : "すべて選択"}</button>` : ""}</div><div class="browser-sessions">${rows.map((s) => `<div class="browser-session-row ${bulkSelected.has(s.id) ? "selected" : ""}"><label class="session-check" aria-label="${esc(replaceText(s.title))}を選択"><input type="checkbox" data-select-id="${esc(s.id)}" ${bulkSelected.has(s.id) ? "checked" : ""}><span></span></label><button class="browser-session" data-id="${esc(s.id)}"><span><strong>${esc(replaceText(s.title))}</strong><small>${esc(date(s.time))} · ${esc(effectivePersona(s))}</small></span><span class="chevron">›</span></button></div>`).join("") || '<p class="muted">このフォルダは空です。</p>'}</div>${chosen.length ? `<div class="bulk-move-bar"><strong>${chosen.length}件を選択中</strong><div class="bulk-move-controls"><select id="bulkFolder" aria-label="移動先フォルダ">${destinations.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select><button id="moveSessions" ${destinations.length ? "" : "disabled"}>まとめて移動</button><button id="deleteSessions" class="bulk-delete">削除</button><button id="cancelBulk" class="bulk-cancel">解除</button></div></div>` : ""}</section>`;
   $("backToFolders").onclick = showFolders;
   document
     .querySelectorAll(".browser-session")
@@ -1895,7 +1986,7 @@ renderFolderSessions = function (folder) {
   renderFolderSessionsBase(folder);
   const heading = $("viewer").querySelector(".browser-heading>div");
   if (!heading) return;
-  const current = settings.folderPersonas[folder] || "";
+  const current = personaDisplay(settings.folderPersonas[folder] || "");
   heading.insertAdjacentHTML(
     "beforeend",
     `<div class="folder-persona-setting"><label for="folderPersonaSetting">このフォルダの話者</label><select id="folderPersonaSetting"><option value="">セッションごとの設定</option>${personaOptions()
@@ -1907,7 +1998,7 @@ renderFolderSessions = function (folder) {
       .join("")}</select></div>`,
   );
   $("folderPersonaSetting").onchange = async (e) => {
-    if (e.target.value) settings.folderPersonas[folder] = e.target.value;
+    if (e.target.value) settings.folderPersonas[folder] = personaIdFor(e.target.value) || e.target.value;
     else delete settings.folderPersonas[folder];
     await save();
     rebuildFilters();
@@ -2251,6 +2342,117 @@ const rm47=renderMemories;renderMemories=function(){rm47();if(!currentMemoryFold
  document.querySelectorAll("[data-mao]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mao);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mar]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mar);openMemory(x.session.id,x.memory.id)});document.querySelectorAll("[data-mae]").forEach(b=>b.onclick=()=>maE(maF(b.dataset.mae).memory));document.querySelectorAll("[data-map]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.map);showMemoryPreview(x.session,x.memory)});document.querySelectorAll("[data-maj]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.maj);exportMemoryJson(x.session,x.memory)});document.querySelectorAll("[data-mac]").forEach(b=>b.onclick=()=>{const x=maF(b.dataset.mac);openMemory(x.session.id,x.memory.id);editingMemoryId=x.memory.id;messageSelected=new Set(x.memory.messageIds);messageSelectionAnchor=x.memory.messageIds.at(-1)||"";renderViewer()});document.querySelectorAll("[data-man]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.man),t=prompt("思い出の名前を変更",x.memory.title);if(!t?.trim()||t.trim()===x.memory.title)return;x.memory.title=t.trim();await save();renderMemories()});document.querySelectorAll("[data-mad]").forEach(b=>b.onclick=async()=>{const x=maF(b.dataset.mad);if(!confirm(`思い出「${x.memory.title}」を削除しますか？`))return;x.session.namedSelections=x.session.namedSelections.filter(m=>m.id!==x.memory.id);all.forEach(s=>(s.namedSelections||[]).forEach(m=>{if(Array.isArray(m.relatedMemoryIds))m.relatedMemoryIds=m.relatedMemoryIds.filter(id=>id!==x.memory.id)}));await save();renderMemories()})};
 const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,m);x.memory.comment=m.comment||"";x.memory.tags=maT(m);x.memory.relatedMemoryIds=maR(m);return x};
 
+/* personaHutV62 */
+const personaHutStyle = document.createElement("style");
+personaHutStyle.textContent = `.persona-hut-launch{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}.persona-hut-launch p{margin:0}.persona-hut-launch button{min-height:43px;border:0;border-radius:11px;background:var(--accent);color:#fff;font-weight:850}.persona-hut-dialog{width:min(680px,calc(100vw - 24px))}.persona-hut-intro{margin:0}.persona-hut-list{display:grid;gap:9px;max-height:58dvh;overflow:auto}.persona-hut-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-align:left}.persona-hut-card:hover{border-color:var(--accent)}.persona-hut-card>span:first-child{display:grid;gap:3px;min-width:0}.persona-hut-card strong{overflow-wrap:anywhere}.persona-hut-card small{color:var(--muted);line-height:1.45}.persona-hut-marker{padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-weight:850;white-space:nowrap}.persona-hut-add{width:100%;min-height:44px;border:1px dashed var(--accent);border-radius:12px;background:var(--paper);color:var(--accent);font-weight:850}.persona-hut-fields{display:grid;grid-template-columns:120px 1fr;gap:9px}.persona-hut-fields .wide{grid-column:1/-1}.persona-hut-help{margin:0;color:var(--muted);font-size:12px;line-height:1.6}.persona-hut-danger{border:1px solid #e2b8c1!important;background:#fff!important;color:#a13b50!important}@media(max-width:560px){.persona-hut-fields{grid-template-columns:1fr}.persona-hut-fields .wide{grid-column:1}.persona-hut-card{align-items:flex-start}.persona-hut-marker{font-size:12px}}`;
+document.head.append(personaHutStyle);
+const personaHut = document.createElement("dialog");
+personaHut.id = "personaHut";
+personaHut.className = "persona-hut-dialog";
+personaHut.innerHTML = '<form method="dialog"><div class="dialog-head"><div><p class="browser-kicker">PERSONA HUT</p><h2>🛖 ペルソナ管理小屋</h2></div><button value="cancel" class="icon-btn" aria-label="閉じる">×</button></div><p class="persona-hut-intro muted">表示名を変えても、固定IDで過去のセッションと日記を同じペルソナとして扱います。</p><div id="personaHutList" class="persona-hut-list"></div><button id="personaHutAdd" class="persona-hut-add" type="button">＋ 新しいペルソナを迎える</button><div class="dialog-actions"><button value="cancel" class="secondary-action">閉じる</button></div></form>';
+document.body.append(personaHut);
+const personaEditor = document.createElement("dialog");
+personaEditor.id = "personaEditor";
+personaEditor.className = "persona-hut-dialog";
+document.body.append(personaEditor);
+function renderPersonaHut() {
+  const profiles = personaProfiles();
+  $("personaHutList").innerHTML = profiles.map(profile =>
+    '<button class="persona-hut-card" type="button" data-persona-profile="' + esc(profile.id) + '"><span><strong>' + esc(profile.displayName) + '</strong><small>識別名：' + esc(profile.identifier) + ' · 別名 ' + profile.aliases.length + '件</small></span><span class="persona-hut-marker">' + (profile.emoji ? '📓' + esc(profile.emoji) : '絵文字未設定') + '</span></button>'
+  ).join("") || '<p class="muted">まだペルソナはいません。</p>';
+  document.querySelectorAll("[data-persona-profile]").forEach(button => button.onclick = () => openPersonaEditor(button.dataset.personaProfile));
+}
+function openPersonaHut() {
+  renderPersonaHut();
+  if (!personaHut.open) personaHut.showModal();
+}
+function personaAliasesFrom(text) {
+  return [...new Set(String(text || "").split(/[、,，\n]/).map(x => x.trim()).filter(Boolean))];
+}
+function updatePersonaReferences(profile, previous = {}) {
+  const previousValues = [previous.id, previous.displayName, previous.identifier, ...(previous.aliases || [])].filter(Boolean);
+  const matchesPrevious = value => value === profile.id || previousValues.some(old => personaTextKey(old) === personaTextKey(value));
+  all.forEach(session => {
+    if (session.personaId === profile.id || matchesPrevious(session.persona)) {
+      session.personaId = profile.id;
+      session.persona = profile.displayName;
+    }
+  });
+  Object.keys(settings.folderPersonas || {}).forEach(folder => {
+    if (matchesPrevious(settings.folderPersonas[folder])) settings.folderPersonas[folder] = profile.id;
+  });
+  if (Array.isArray(settings.diaryEntries)) settings.diaryEntries.forEach(entry => {
+    if (entry.personaId === profile.id || matchesPrevious(entry.persona)) {
+      entry.personaId = profile.id;
+      entry.persona = profile.displayName;
+    }
+  });
+  if (Array.isArray(settings.diaryExcludedSources)) settings.diaryExcludedSources.forEach(entry => {
+    if (entry.personaId === profile.id || matchesPrevious(entry.persona)) {
+      entry.personaId = profile.id;
+      entry.persona = profile.displayName;
+    }
+  });
+}
+function openPersonaEditor(id = "") {
+  const existing = personaProfiles().find(profile => profile.id === id) || null;
+  const base = existing || normalizePersonaProfile({ id: `persona-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, emoji: "", displayName: "", identifier: "", aliases: [] });
+  personaEditor.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (existing ? "ペルソナを整える" : "新しいペルソナを迎える") + '</h2><button value="cancel" class="icon-btn" aria-label="閉じる">×</button></div><div class="persona-hut-fields"><label>日記絵文字<input id="personaEditEmoji" value="' + esc(base.emoji) + '" placeholder="🕯️"></label><label>表示名<input id="personaEditDisplay" value="' + esc(base.displayName) + '" placeholder="🕯️ かげちゃん"></label><label class="wide">識別名<input id="personaEditIdentifier" value="' + esc(base.identifier) + '" placeholder="影山誠実"></label><label class="wide">別名<textarea id="personaEditAliases" rows="4" placeholder="かげちゃん、🕯️かげちゃん">' + esc(base.aliases.join("\n")) + '</textarea></label></div><p class="persona-hut-help">日記は <strong>📓＋日記絵文字＋日付</strong> で抽出します。絵文字を変更しても、以前の絵文字は過去ログ用の目印として残ります。</p><div class="dialog-actions">' + (existing ? '<button id="personaDelete" type="button" class="persona-hut-danger">削除</button>' : '<span></span>') + '<span><button value="cancel" class="secondary-action">キャンセル</button> <button id="personaSave" type="button">保存</button></span></div></form>';
+  personaEditor.querySelector("#personaSave").onclick = async () => {
+    const emoji = personaEditor.querySelector("#personaEditEmoji").value.trim();
+    const displayName = personaEditor.querySelector("#personaEditDisplay").value.trim();
+    const identifier = personaEditor.querySelector("#personaEditIdentifier").value.trim();
+    const aliases = personaAliasesFrom(personaEditor.querySelector("#personaEditAliases").value);
+    if (!emoji || !displayName || !identifier) return alert("日記絵文字・表示名・識別名を入力してください。");
+    const duplicateMarker = personaProfiles().find(profile => profile.id !== base.id && [profile.emoji, ...(profile.emojiAliases || [])].some(marker => personaEmojiKey(marker) === personaEmojiKey(emoji)));
+    if (duplicateMarker) return alert(`その日記絵文字は「${duplicateMarker.displayName}」が使用中です。`);
+    const nameKeys = new Set([displayName, identifier, ...aliases].map(personaTextKey));
+    const duplicateName = personaProfiles().find(profile => profile.id !== base.id && [profile.displayName, profile.identifier, ...(profile.aliases || [])].some(name => nameKeys.has(personaTextKey(name))));
+    if (duplicateName) return alert(`「${duplicateName.displayName}」と同じ表示名・識別名・別名があります。`);
+    const previous = existing ? { ...existing, aliases: [...existing.aliases], emojiAliases: [...existing.emojiAliases] } : {};
+    const next = existing || base;
+    if (existing && personaEmojiKey(existing.emoji) !== personaEmojiKey(emoji) && existing.emoji) next.emojiAliases = [...new Set([...(existing.emojiAliases || []), existing.emoji])];
+    next.emoji = emoji;
+    next.displayName = displayName;
+    next.identifier = identifier;
+    next.aliases = [...new Set([...aliases, ...(existing && existing.displayName !== displayName ? [existing.displayName] : []), ...(existing && existing.identifier !== identifier ? [existing.identifier] : [])])];
+    if (!existing) settings.personaProfiles.push(next);
+    ensurePersonaProfiles();
+    updatePersonaReferences(next, previous);
+    await save();
+    rebuildFilters();
+    renderList();
+    if (viewMode === "diaries") dlRender(); else renderViewer();
+    personaEditor.close();
+    renderPersonaHut();
+  };
+  personaEditor.querySelector("#personaDelete")?.addEventListener("click", async () => {
+    if (!confirm(`「${existing.displayName}」を管理小屋から削除しますか？\n過去データの表示名は残ります。`)) return;
+    settings.personaProfiles = personaProfiles().filter(profile => profile.id !== existing.id);
+    all.forEach(session => { if (session.personaId === existing.id) session.personaId = ""; });
+    Object.keys(settings.folderPersonas || {}).forEach(folder => { if (settings.folderPersonas[folder] === existing.id) settings.folderPersonas[folder] = existing.displayName; });
+    if (Array.isArray(settings.diaryEntries)) settings.diaryEntries.forEach(entry => { if (entry.personaId === existing.id) entry.personaId = ""; });
+    ensurePersonaProfiles();
+    await save();
+    rebuildFilters();
+    renderList();
+    if (viewMode === "diaries") dlRender(); else renderViewer();
+    personaEditor.close();
+    renderPersonaHut();
+  });
+  personaEditor.showModal();
+}
+$("personaHutAdd").onclick = () => openPersonaEditor();
+const legacyPersonaManager = $("newPersona")?.closest(".manager");
+if (legacyPersonaManager) {
+  legacyPersonaManager.style.display = "none";
+  const launcher = document.createElement("section");
+  launcher.className = "manager persona-hut-launch";
+  launcher.innerHTML = '<strong>ペルソナ</strong><p class="muted">初期搭載分も、表示名・識別名・別名・日記絵文字を編集できます。</p><button id="openPersonaHut" type="button">🛖 ペルソナ管理小屋を開く</button>';
+  legacyPersonaManager.after(launcher);
+  $("openPersonaHut").onclick = openPersonaHut;
+}
+
 /* diaryLogsV50 */
 const dlCss = document.createElement("style");
 dlCss.textContent = ".dl-tools,.dl-actions,.dl-export-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.dl-list{display:grid;gap:10px}.dl-card,.dl-candidates{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card)}.dl-card h3{margin:3px 0}.dl-card small{color:var(--muted)}.dl-kind{color:var(--accent);font-size:11px;font-weight:850}.dl-body{margin:11px 0;padding:13px;border-radius:10px;background:var(--paper);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75}.dl-actions button,.dl-tools button,.dl-export-actions button{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-actions .dl-jump,.dl-export-actions .dl-export-primary{background:var(--accent);color:#fff}.dl-candidate{padding:10px 0;border-top:1px solid var(--line)}.dl-warning{padding:7px;background:#fff1bf;color:#6d5500;border-radius:8px}.dl-warning-button{display:block;width:100%;border:1px solid #d7bd58;text-align:left;cursor:pointer;font:inherit;font-weight:800}.dl-warning-button span{display:block;margin-top:3px;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:2px}.dl-dialog{width:min(680px,calc(100vw - 24px))}.dl-dialog textarea{min-height:40dvh}.dl-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dl-fields label{min-width:0}.dl-editor-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:8px}.dl-editor-actions button{width:100%;min-width:0;min-height:54px;padding:9px 6px;line-height:1.35}input[type=\"date\"],input[type=\"datetime-local\"],input[type=\"month\"]{display:block;width:100%;min-width:0;max-width:100%}input[type=\"date\"]::-webkit-date-and-time-value,input[type=\"datetime-local\"]::-webkit-date-and-time-value,input[type=\"month\"]::-webkit-date-and-time-value{min-width:0;text-align:center}.dl-source{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.dl-source-meta{margin:0;color:var(--muted);font-size:12px}.dl-source-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.dl-source-actions button{padding:8px 10px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-source-full{max-height:34dvh;overflow:auto;margin:10px 0 0;padding:11px;border:1px solid var(--line);border-radius:9px;background:var(--card);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-source-restore{width:100%;margin-top:8px!important;background:var(--accent)!important;color:#fff!important}.dl-month-export{padding:0 10px 4px}.dl-month-export .dl-export-actions{margin:6px 0}.dl-persona-export{padding:0 15px 3px}.dl-copy-done{border-color:var(--accent)!important;color:var(--accent)!important}@media(max-width:600px){.dl-fields{grid-template-columns:1fr}.dl-source-actions{display:grid;grid-template-columns:1fr 1fr}.dl-source-actions button{width:100%}.dl-export-actions{display:grid;grid-template-columns:1fr 1fr}.dl-export-actions button{min-width:0}.dl-editor-actions button{font-size:14px}}";
@@ -2258,11 +2460,20 @@ document.head.append(dlCss);
 const dlGroupCss = document.createElement("style");
 dlGroupCss.textContent = ".dl-personas,.dl-months{display:grid;gap:10px}.dl-persona,.dl-month{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--card)}.dl-persona-summary,.dl-month-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}.dl-persona-summary::-webkit-details-marker,.dl-month-summary::-webkit-details-marker{display:none}.dl-persona-summary{padding:15px 17px;background:color-mix(in srgb,var(--accent) 10%,var(--card))}.dl-persona-summary strong{font-size:17px}.dl-month-summary{padding:12px 15px;border-top:1px solid var(--line);background:var(--paper)}.dl-month-summary strong{font-size:14px}.dl-group-count{color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}.dl-month-list{display:grid;gap:10px;padding:10px}.dl-month-list .dl-card{background:var(--paper)}.dl-month-list .dl-body{background:var(--card)}.dl-order{display:flex;align-items:center;gap:8px;margin-left:auto}.dl-order label{color:var(--muted);font-size:12px;font-weight:800}.dl-order select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-weight:800}.dl-calendar{margin:0 10px 10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--paper) 78%,transparent)}.dl-calendar-head,.dl-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.dl-calendar-head{margin-bottom:5px}.dl-calendar-head span{color:var(--muted);font-size:10px;font-weight:850;text-align:center}.dl-calendar-blank{min-height:38px}.dl-calendar-day{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:38px;padding:0;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--accent) 11%,var(--paper));color:var(--ink);font:800 12px/1 system-ui;cursor:pointer}.dl-calendar-day:hover{border-color:var(--accent)}.dl-calendar-day.is-missing{border-style:dashed;background:transparent;color:var(--muted);opacity:.58}.dl-calendar-day.is-missing::after{content:\"\";position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.dl-calendar-day.is-future{border-color:transparent;background:transparent;color:var(--muted);cursor:default;opacity:.24}.dl-calendar-day.is-today{box-shadow:inset 0 0 0 1px var(--accent)}.dl-day-anchor{border-radius:14px;scroll-margin-top:18px;transition:box-shadow .2s ease}.dl-day-anchor.is-calendar-target{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 48%,transparent)}.dl-missing-card{padding:11px 14px;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--card) 58%,transparent);opacity:.78}.dl-missing-card h3{margin:3px 0;color:var(--muted);font-size:14px}.dl-missing-card .dl-kind{color:var(--muted)}@media(max-width:600px){.dl-persona-summary{padding:13px 14px}.dl-month-list{padding:8px}.dl-calendar{margin:0 8px 8px;padding:8px}.dl-calendar-head,.dl-calendar-grid{gap:3px}.dl-calendar-day,.dl-calendar-blank{min-height:34px}}";
 document.head.append(dlGroupCss);
+const dlTemplateCss = document.createElement("style");
+dlTemplateCss.textContent = `.dl-template-help{margin:12px 0 16px;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}.dl-template-help>summary{padding:12px 14px;color:var(--accent);font-weight:850;cursor:pointer}.dl-template-content{display:grid;gap:10px;padding:0 14px 14px}.dl-template-content>p{margin:0}.dl-template-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.dl-template-card{display:grid;gap:7px;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--paper)}.dl-template-card pre{margin:0;padding:9px;border-radius:8px;background:var(--card);white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}.dl-template-card button{min-height:36px;border:1px solid var(--accent);border-radius:9px;background:var(--card);color:var(--accent);font-weight:800}.dl-template-legacy{padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.65}`;
+document.head.append(dlTemplateCss);
 let dlCandidates = [];
 let dlCandidateMode = false;
 function dlList() {
   if (!Array.isArray(settings.diaryEntries)) settings.diaryEntries = [];
+  settings.diaryEntries.forEach(entry => {
+    if (!entry.personaId) entry.personaId = personaIdFor(entry.persona);
+  });
   return settings.diaryEntries;
+}
+function dlEntryPersona(entry) {
+  return personaDisplay(entry?.personaId || entry?.persona || "ペルソナ未設定");
 }
 function dlSortOrder() {
   return settings.diarySortOrder === "asc" ? "asc" : "desc";
@@ -2326,7 +2537,7 @@ function dlSourceKey(entry) {
 async function dlExcludeCandidate(candidate) {
   if (!candidate) return;
   if (!dlExcluded().some(x => dlSourceKey(x) === dlSourceKey(candidate))) {
-    dlExcluded().push({ sessionId: candidate.sessionId, messageId: candidate.messageId, date: candidate.date, persona: candidate.persona, kind: candidate.kind, preview: candidate.body.slice(0, 160), excludedAt: Date.now() });
+    dlExcluded().push({ sessionId: candidate.sessionId, messageId: candidate.messageId, date: candidate.date, persona: candidate.persona, personaId: candidate.personaId || personaIdFor(candidate.persona), kind: candidate.kind, preview: candidate.body.slice(0, 160), excludedAt: Date.now() });
   }
   dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
   await save();
@@ -2338,6 +2549,45 @@ function dlDate(time, minus) {
 function dlExplicit(text) {
   const m = String(text || "").match(/(20\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})日?/);
   return m ? m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0") : "";
+}
+function dlMarkedDiary(text) {
+  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    const header = lines[index].replace(/^\s*```(?:text|markdown)?\s*/i, "").trim();
+    const match = header.match(/^📓\s*(.+?)\s+(20\d{2}[-\/年]\d{1,2}[-\/月]\d{1,2}日?)\s*$/);
+    if (!match) continue;
+    const profile = personaProfileForEmoji(match[1]);
+    if (!profile) continue;
+    const body = [];
+    for (let bodyIndex = index + 1; bodyIndex < lines.length; bodyIndex++) {
+      const line = lines[bodyIndex];
+      if (/^\s*---\s*$/.test(line) || /^\s*📓/.test(line) || /^\s*```\s*$/.test(line)) break;
+      body.push(line);
+    }
+    const cleanBody = body.join("\n").trim();
+    if (!cleanBody) continue;
+    return {
+      date: dlExplicit(match[2]),
+      body: cleanBody,
+      persona: profile.displayName,
+      personaId: profile.id,
+      marker: "📓" + profile.emoji,
+    };
+  }
+  return null;
+}
+function dlLegacyDelimitedDiary(text) {
+  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    const header = lines[index].replace(/^\s*```(?:text|markdown)?\s*/i, "").trim();
+    if (!/^20\d{2}[-\/年]\d{1,2}[-\/月]\d{1,2}日?$/.test(header)) continue;
+    const end = lines.findIndex((line, lineIndex) => lineIndex > index && /^\s*---\s*$/.test(line));
+    if (end < 0) continue;
+    const body = lines.slice(index + 1, end).join("\n").trim();
+    if (!body) continue;
+    return { date: dlExplicit(header), body };
+  }
+  return null;
 }
 function dlBody(text, kind) {
   const raw = String(text || "").trim();
@@ -2391,15 +2641,18 @@ function dlScan() {
     if (nextVisible && nextVisible.role === "assistant") return;
     const prev = s.messages.slice(0, i).reverse().find(x => !x.hidden && x.role === "user");
     const ask = prev ? prev.text : "", answer = m.text || "";
+    const marked = dlMarkedDiary(answer);
+    const legacyDelimited = marked ? null : dlLegacyDelimitedDiary(answer);
     const answerKind = /締めログ/.test(answer) ? "closing" : /#今日の記録|今日の記録/.test(answer) ? "today" : "";
     const requestedKind = /締めログ/.test(ask) ? "closing" : /#今日の記録|今日の記録/.test(ask) ? "today" : "";
     const diaryLike = answer.trim().length >= 100 && answer.trim().split(/\n\s*\n|\n/).filter(Boolean).length >= 3;
-    const kind = answerKind || (diaryLike ? requestedKind : "");
+    const kind = marked || legacyDelimited ? "today" : answerKind || (diaryLike ? requestedKind : "");
     if (!kind) return;
     const hay = answer + " " + ask;
-    const stated = dlExplicit(answer), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay)), persona = effectivePersona(s);
-    const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && x.persona === persona);
-    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: dlBody(answer, kind), persona, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: answer, explicitKind: Boolean(answerKind), warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
+    const stated = marked?.date || legacyDelimited?.date || dlExplicit(answer), dateValue = stated || dlDate(m.time, /昨日(?:ぶん|分|の)?/.test(hay));
+    const persona = marked?.persona || effectivePersona(s), personaId = marked?.personaId || personaIdFor(persona);
+    const duplicate = dlList().some(x => x.kind === kind && x.date === dateValue && dlEntryPersona(x) === personaDisplay(personaId || persona));
+    found.push({ id: "cand-" + s.id + "-" + m.id, kind, date: dateValue, body: marked?.body || legacyDelimited?.body || dlBody(answer, kind), persona: personaDisplay(personaId || persona), personaId, model: m.model || "", sessionId: s.id, messageId: m.id, messageIds: [m.id], sourceTime: m.time || 0, sourceText: answer, extraction: marked ? "emoji" : legacyDelimited ? "legacy-delimited" : "legacy", explicitKind: Boolean(marked || legacyDelimited || answerKind), warning: duplicate ? "同じ日付・種別・ペルソナの日記が登録済みです。" : "" });
   }));
   const unique = new Map();
   found.forEach(candidate => {
@@ -2419,7 +2672,7 @@ function dlMatchingEntries(candidate) {
   return dlList().filter(entry =>
     entry.kind === candidate.kind &&
     entry.date === candidate.date &&
-    entry.persona === candidate.persona
+    dlEntryPersona(entry) === personaDisplay(candidate.personaId || candidate.persona)
   );
 }
 function dlShowDuplicate(candidate) {
@@ -2432,7 +2685,7 @@ function dlShowDuplicate(candidate) {
   const d = document.createElement("dialog");
   d.id = "dlDuplicateViewer";
   d.className = "dl-dialog";
-  d.innerHTML = '<form method="dialog"><div class="dialog-head"><div><p class="browser-kicker">REGISTERED DIARY</p><h2>登録済みの日記</h2></div><button value="cancel" class="icon-btn">×</button></div><p class="muted">候補と同じ日付・種別・ペルソナで登録されている日記です。</p><div class="dl-list">' + matches.map(entry => '<article class="dl-card"><span class="dl-kind">' + (entry.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.persona || "ペルソナ未設定") + (entry.model ? " · " + esc(entry.model) : "") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions"><button type="button" data-dldup-edit="' + esc(entry.id) + '">この日記を修正</button></div></article>').join("") + '</div><div class="dialog-actions"><button value="cancel">閉じる</button></div></form>';
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><div><p class="browser-kicker">REGISTERED DIARY</p><h2>登録済みの日記</h2></div><button value="cancel" class="icon-btn">×</button></div><p class="muted">候補と同じ日付・種別・ペルソナで登録されている日記です。</p><div class="dl-list">' + matches.map(entry => '<article class="dl-card"><span class="dl-kind">' + (entry.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(dlEntryPersona(entry)) + (entry.model ? " · " + esc(entry.model) : "") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions"><button type="button" data-dldup-edit="' + esc(entry.id) + '">この日記を修正</button></div></article>').join("") + '</div><div class="dialog-actions"><button value="cancel">閉じる</button></div></form>';
   document.body.append(d);
   d.addEventListener("close", () => d.remove(), { once: true });
   d.querySelectorAll("[data-dldup-edit]").forEach(button => button.onclick = () => {
@@ -2448,6 +2701,13 @@ function dlJump(entry) {
   renderViewer();
   setTimeout(() => $("msg-" + entry.messageId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
 }
+function dlPersonaSelectOptions(base) {
+  const current = personaDisplay(base?.personaId || base?.persona || "");
+  const options = [...new Set([...personaOptions(), ...(current && current !== "未分類" ? [current] : [])])];
+  return '<option value="" ' + (!current ? "selected" : "") + '>ペルソナ未設定</option>' + options.map(name =>
+    '<option value="' + esc(name) + '" ' + (name === current ? "selected" : "") + '>' + esc(name) + '</option>'
+  ).join("");
+}
 function dlEditor(item, candidate) {
   document.querySelector("#dlEditor")?.remove();
   const base = item || candidate || { kind: "today", date: dlDate(Date.now() / 1000), body: "", persona: "", model: "" };
@@ -2458,7 +2718,7 @@ function dlEditor(item, candidate) {
   const d = document.createElement("dialog");
   d.id = "dlEditor";
   d.className = "dl-dialog";
-  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<input id="dlPersona" value="' + esc(base.persona || "") + '"></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions' + (candidate ? ' dl-editor-actions' : '') + '">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind"><option value="today">今日の記録</option><option value="closing">締めログ</option></select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<select id="dlPersona">' + dlPersonaSelectOptions(base) + '</select></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions' + (candidate ? ' dl-editor-actions' : '') + '">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
   document.body.append(d);
   d.querySelector("#dlKind").value = base.kind;
   d.addEventListener("close", () => d.remove(), { once: true });
@@ -2489,7 +2749,8 @@ function dlEditor(item, candidate) {
   d.querySelector("#dlSave").onclick = async () => {
     const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");
-    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona: d.querySelector("#dlPersona").value.trim(), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", updatedAt: Date.now() };
+    const persona = d.querySelector("#dlPersona").value.trim();
+    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
     const list = dlList(), index = list.findIndex(x => x.id === entry.id);
     if (index >= 0) list[index] = entry; else list.push(entry);
     if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
@@ -2509,7 +2770,8 @@ function dlSelected() {
   const assistant = messages.find(m => m.role === "assistant") || messages[0];
   const text = messages.map(m => (messages.length > 1 ? nameOf(m, session) + "：\n" : "") + m.text).join("\n\n");
   const kind = /締めログ/.test(text) ? "closing" : "today";
-  return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona: effectivePersona(session), model: assistant.model || "", sessionId: session.id, messageId: assistant.id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0, sourceText: assistant.text || "" };
+  const persona = effectivePersona(session);
+  return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona, personaId: personaIdFor(persona), model: assistant.model || "", sessionId: session.id, messageId: assistant.id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0, sourceText: assistant.text || "" };
 }
 function dlCard(entry) {
   return '<article class="dl-card"><span class="dl-kind">' + (entry.kind === "closing" ? "締めログ" : "今日の記録") + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
@@ -2562,10 +2824,17 @@ function dlExportPersonaZip(persona, months) {
   });
   download(safeName(persona) + "_日記.zip", makeZip(files), "application/zip");
 }
+function dlTemplateText(profile) {
+  return "📓" + profile.emoji + " yyyy-mm-dd\n\nここに日記本文\n\n---";
+}
+function dlTemplateHelp() {
+  const profiles = personaProfiles().filter(profile => profile.emoji);
+  return '<details class="dl-template-help"><summary>📓 今後の日記テンプレを見る</summary><div class="dl-template-content"><p class="muted">📓とペルソナの日記絵文字で、自動的に登録先を判別します。</p><div class="dl-template-grid">' + profiles.map(profile => '<article class="dl-template-card"><strong>' + esc(profile.displayName) + '</strong><pre>' + esc(dlTemplateText(profile)) + '</pre><button type="button" data-dl-template="' + esc(profile.id) + '">テンプレをコピー</button></article>').join("") + '</div><p class="dl-template-legacy"><strong>過去ログも対象です。</strong><br>従来の「yyyy-mm-dd＋本文＋---」や、「今日の記録／締めログ」を含む形式も、これまでどおり候補抽出します。</p></div></details>';
+}
 function dlGroupedRows(rows) {
   const personas = new Map();
   rows.forEach(entry => {
-    const persona = entry.persona || "ペルソナ未設定";
+    const persona = dlEntryPersona(entry);
     const month = /^\d{4}-\d{2}/.test(entry.date || "") ? entry.date.slice(0, 7) : "日付不明";
     if (!personas.has(persona)) personas.set(persona, new Map());
     const months = personas.get(persona);
@@ -2588,8 +2857,8 @@ function dlRender() {
   const rows = dlList().slice().sort(dlCompareDate);
   const candidates = '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + (dlCandidates.length ? dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + (c.kind === "closing" ? "締めログ" : "今日の記録") + '</strong>' + (c.warning ? '<button type="button" class="dl-warning dl-warning-button" data-dldup="' + esc(c.id) + '">⚠ ' + esc(c.warning) + '<span>登録済みの日記を見る ›</span></button>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><div class="dl-actions"><button data-dlc="' + esc(c.id) + '">確認・登録</button><button data-dlx="' + esc(c.id) + '">これは日記じゃない</button></div></div>').join("") : "<p>新しい候補はありません。</p>") + "</section>";
   const excluded = dlExcluded();
-  const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(x.persona || "ペルソナ未設定") + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
-  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div><div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml;
+  const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(personaDisplay(x.personaId || x.persona || "ペルソナ未設定")) + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
+  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml;
   const candidateHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY CANDIDATES</p><h2>日記の抽出候補</h2><p class="muted">確認して登録するか、候補から除外できます。</p></div><span class="count-badge">' + dlCandidates.length + ' 件</span></div><div class="dl-tools"><button id="dlReturn">← 登録済みの日記へ戻る</button></div>' + candidates;
   $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
   $("dlBack").onclick = showFolders;
@@ -2597,6 +2866,15 @@ function dlRender() {
   if ($("dlReturn")) $("dlReturn").onclick = showDiaries;
   if ($("dlScan")) $("dlScan").onclick = dlScan;
   if ($("dlManual")) $("dlManual").onclick = () => dlEditor();
+  if ($("dlOpenPersonaHut")) $("dlOpenPersonaHut").onclick = openPersonaHut;
+  document.querySelectorAll("[data-dl-template]").forEach(button => button.onclick = async () => {
+    const profile = personaProfiles().find(item => item.id === button.dataset.dlTemplate);
+    if (!profile) return;
+    await copyToClipboard(dlTemplateText(profile));
+    const previous = button.textContent;
+    button.textContent = "コピーしました";
+    setTimeout(() => { if (button.isConnected) button.textContent = previous; }, 1400);
+  });
   if ($("dlSort")) {
     $("dlSort").value = dlSortOrder();
     $("dlSort").onchange = async event => {
@@ -2629,7 +2907,7 @@ function dlRender() {
   document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));
   const grouped = new Map();
   rows.forEach(entry => {
-    const persona = entry.persona || "ペルソナ未設定";
+    const persona = dlEntryPersona(entry);
     const month = /^\d{4}-\d{2}/.test(entry.date || "") ? entry.date.slice(0, 7) : "日付不明";
     if (!grouped.has(persona)) grouped.set(persona, new Map());
     if (!grouped.get(persona).has(month)) grouped.get(persona).set(month, []);
@@ -2666,7 +2944,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v61";
+document.querySelector(".app-version").textContent = "v62";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

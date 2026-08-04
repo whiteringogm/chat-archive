@@ -412,6 +412,7 @@ function merge(incoming) {
       ? old.namedSelections
       : [];
     fresh.notes = Array.isArray(old.notes) ? old.notes : [];
+    applyFolderPersonaToSession(fresh);
     delete fresh.trashedAt;
     delete fresh.originalFolder;
     byId.set(fresh.id, fresh);
@@ -461,6 +462,7 @@ async function load() {
     }
     settings.theme = settings.theme === "dark" ? "dark" : "light";
     settings.showModelNames = settings.showModelNames !== false;
+    let folderPersonaMigrated = false;
     all.forEach((s) => {
       s.personaId = personaIdFor(s.personaId || s.persona);
       s.namedSelections = Array.isArray(s.namedSelections)
@@ -470,7 +472,9 @@ async function load() {
         if (!memory.folder) memory.folder = s.folder || "未分類";
       });
       s.notes = Array.isArray(s.notes) ? s.notes : [];
+      if (applyFolderPersonaToSession(s)) folderPersonaMigrated = true;
     });
+    if (folderPersonaMigrated) await dbSet(STORE, all);
     if (Array.isArray(settings.diaryEntries)) {
       let diaryMigrated = false;
       settings.diaryEntries.forEach(entry => { if (dlNormalizeEntry(entry)) diaryMigrated = true; });
@@ -495,6 +499,17 @@ function applyTheme() {
 function folderPersonaForSession(s) {
   const folder = s.folder || "未分類";
   return folder === "未分類" ? "" : settings.folderPersonas[folder] || "";
+}
+function applyFolderPersonaToSession(s) {
+  const folderPersona = folderPersonaForSession(s);
+  if (!folderPersona) return false;
+  const profile = personaProfileFor(folderPersona);
+  const nextPersona = profile?.displayName || personaDisplay(folderPersona);
+  const nextPersonaId = profile?.id || personaIdFor(folderPersona);
+  const changed = s.persona !== nextPersona || (s.personaId || "") !== nextPersonaId;
+  s.persona = nextPersona;
+  s.personaId = nextPersonaId;
+  return changed;
 }
 function effectivePersona(s) {
   const folderPersona = folderPersonaForSession(s);
@@ -702,7 +717,9 @@ function renderSearchBulk() {
     const destination = $("searchBulkFolder").value;
     if (!destination) return;
     all.forEach((s) => {
-      if (bulkSelected.has(s.id)) s.folder = destination;
+      if (!bulkSelected.has(s.id)) return;
+      s.folder = destination;
+      applyFolderPersonaToSession(s);
     });
     const moved = bulkSelected.size;
     bulkSelected.clear();
@@ -903,12 +920,14 @@ function renderViewer({updatePanel=true}={}) {
     chosen = shown.filter((m) => messageSelected.has(m.id)),
     active = s.namedSelections.find((x) => x.id === activeNamedSelection),
     activeIds = new Set(active?.messageIds || []),
-    folderFixed = personaDisplay(folderPersonaForSession(s));
+    folderPersona = folderPersonaForSession(s),
+    folderFixed = folderPersona ? personaDisplay(folderPersona) : "",
+    selectedPersona = folderFixed || personaDisplay(s.personaId || s.persona);
   $("viewer").innerHTML =
     `<article class="conversation"><div class="title-row"><div><h2>${esc(replaceText(s.title))}</h2><div class="meta">${esc(date(s.time))} · ${esc(s.models.join(", ") || "モデル不明")}</div></div><div class="tools"><button id="addTopMemo">＋ 冒頭にメモ</button><button id="exportMd">Markdown</button><button id="exportJson">JSON</button></div></div><div class="saved-selection-nav"><div class="saved-selection-head"><strong>保存した思い出</strong><span>${s.namedSelections.length}件</span></div>${s.namedSelections.length ? `<div class="saved-selection-list">${s.namedSelections.map((x) => `<button data-memory-id="${esc(x.id)}" class="${x.id === activeNamedSelection ? "active" : ""}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join("")}</div>${active ? '<div class="saved-selection-actions"><button id="editNamedSelection">会話を追加・除去</button><button id="renameNamedSelection">名前を変更</button><button id="deleteNamedSelection" class="memory-remove">この思い出を削除</button></div>' : ""}` : '<p class="muted">発言を選択して「タイトルをつけて保存」すると、ここや思い出一覧から開けます。</p>'}</div><div class="session-fields"><label>ペルソナ<select id="sessionPersona" ${folderFixed ? "disabled" : ""}>${personaOptions()
       .map(
         (x) =>
-          `<option ${x === personaDisplay(s.personaId || s.persona) ? "selected" : ""}>${esc(x)}</option>`,
+          `<option ${x === selectedPersona ? "selected" : ""}>${esc(x)}</option>`,
       )
       .join(
         "",
@@ -1037,10 +1056,11 @@ function renderViewer({updatePanel=true}={}) {
     renderList();
     renderViewer();
   };
-  $("sessionFolder").onchange = (e) => {
+  $("sessionFolder").onchange = async (e) => {
     s.folder = e.target.value;
+    applyFolderPersonaToSession(s);
     activeNamedSelection = "";
-    save();
+    await save();
     rebuildFilters();
     renderList();
     renderViewer();
@@ -1992,7 +2012,9 @@ function renderFolderSessions(folder) {
       const destination = $("bulkFolder").value;
       if (!destination) return;
       all.forEach((s) => {
-        if (bulkSelected.has(s.id)) s.folder = destination;
+        if (!bulkSelected.has(s.id)) return;
+        s.folder = destination;
+        applyFolderPersonaToSession(s);
       });
       const moved = bulkSelected.size;
       bulkSelected.clear();
@@ -2043,8 +2065,12 @@ renderFolderSessions = function (folder) {
         .join("")}</select></div>`,
     );
     $("folderPersonaSetting").onchange = async (e) => {
-      if (e.target.value) settings.folderPersonas[folder] = personaIdFor(e.target.value) || e.target.value;
-      else delete settings.folderPersonas[folder];
+      if (e.target.value) {
+        settings.folderPersonas[folder] = personaIdFor(e.target.value) || e.target.value;
+        all.filter(s => !s.trashedAt && (s.folder || "未分類") === folder).forEach(applyFolderPersonaToSession);
+      } else {
+        delete settings.folderPersonas[folder];
+      }
       await save();
       rebuildFilters();
       renderList();
@@ -3082,7 +3108,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v66";
+document.querySelector(".app-version").textContent = "v67";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

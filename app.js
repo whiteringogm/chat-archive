@@ -541,6 +541,11 @@ function speakerIconOf(m, s) {
   const profile = personaProfileFor(personaValue);
   return profile ? profile.icon || "" : settings.assistantIcon || "";
 }
+function speakerEmojiOf(m, s) {
+  if (m.role !== "assistant") return "";
+  const personaValue = folderPersonaForSession(s) || s.personaId || s.persona || "";
+  return personaProfileFor(personaValue)?.emoji || "";
+}
 function iconDataFromFile(file, size = 128) {
   return new Promise((resolve, reject) => {
     if (!file || !String(file.type || "").startsWith("image/")) return reject(new Error("画像ファイルを選んでください。"));
@@ -1040,7 +1045,7 @@ function renderViewer({updatePanel=true, autoFocusHit=true}={}) {
       )
       .join(
         "",
-      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${!q&&!model?renderNotesAfter(s,null):""}${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}${m.role === "assistant" ? " · " + esc(m.model || "モデル不明") : ""}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>${!q&&!model?`<button class="add-memo-after" data-add-memo-after="${esc(m.id)}">＋ この位置にメモ</button>${renderNotesAfter(s,m.id)}`:""}`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${editingMemoryId ? "思い出を編集中 · " : ""}${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">${editingMemoryId ? "思い出の内容を更新" : "タイトルをつけて保存"}</button>${!editingMemoryId && s.namedSelections.length ? '<button id="appendNamedSelection">既存の思い出に追加</button>' : ""}<button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
+      )}</select><span class="field-note">新規追加は「表示設定」からできます。</span></label></div>${!q&&!model?renderNotesAfter(s,null):""}${shown.map((m) => `<div class="message ${m.role} ${messageSelected.has(m.id) ? "copy-selected" : ""} ${m.id === messageSelectionAnchor ? "selection-anchor" : ""} ${activeIds.has(m.id) ? "saved-selection" : ""}" id="msg-${esc(m.id)}"><div class="message-head"><span class="message-label-wrap"><span class="label">${esc(nameOf(m, s))}</span><time class="message-time">${esc(messageDate(m.time))}</time></span><span>${messageSelected.size && m.id !== messageSelectionAnchor ? `<button class="range-select" data-range-mid="${esc(m.id)}">ここまで選択</button>` : ""}<label class="message-select"><input type="checkbox" data-copy-mid="${esc(m.id)}" ${messageSelected.has(m.id) ? "checked" : ""}>選択</label><button class="edit icon-btn" data-mid="${esc(m.id)}">編集</button><button class="hide icon-btn" data-mid="${esc(m.id)}">非表示</button></span></div><div class="body markdown-body">${q ? mark(m.text, q) : renderMarkdown(m.text)}</div>${(q||model)?`<button class="jump-original" data-jump-mid="${esc(m.id)}">元の位置へ</button>`:""}</div>${!q&&!model?`<button class="add-memo-after" data-add-memo-after="${esc(m.id)}">＋ この位置にメモ</button>${renderNotesAfter(s,m.id)}`:""}`).join("") || '<p class="muted">該当する発言がありません。</p>'}${chosen.length ? `<div class="message-copy-bar"><strong>${editingMemoryId ? "思い出を編集中 · " : ""}${chosen.length}件の発言を選択中</strong><div class="message-copy-actions"><button id="saveNamedSelection">${editingMemoryId ? "思い出の内容を更新" : "タイトルをつけて保存"}</button>${!editingMemoryId && s.namedSelections.length ? '<button id="appendNamedSelection">既存の思い出に追加</button>' : ""}<button id="copyMessages">テキストをコピー</button><button id="cancelMessageCopy" class="copy-cancel">選択解除</button></div></div>` : ""}<details class="hidden-box"><summary>非表示の発言（${s.messages.filter((m) => m.hidden).length}）</summary>${s.messages
       .filter((m) => m.hidden)
       .map(
         (m) =>
@@ -1060,7 +1065,7 @@ function renderViewer({updatePanel=true, autoFocusHit=true}={}) {
   shown.forEach((message) => {
     const label = document.getElementById("msg-" + message.id)?.querySelector(".label");
     if (!label) return;
-    label.textContent = nameOf(message, s);
+    label.textContent = "";
     const speakerIcon = speakerIconOf(message, s);
     if (speakerIcon) {
       const icon = document.createElement("img");
@@ -1068,12 +1073,23 @@ function renderViewer({updatePanel=true, autoFocusHit=true}={}) {
       icon.src = speakerIcon;
       icon.alt = "";
       icon.decoding = "async";
-      label.append(" ", icon);
+      label.append(icon);
+    }
+    const speakerName = document.createElement("span");
+    speakerName.className = "speaker-name";
+    speakerName.textContent = nameOf(message, s);
+    label.append(speakerName);
+    const speakerEmoji = speakerEmojiOf(message, s);
+    if (speakerEmoji) {
+      const emoji = document.createElement("span");
+      emoji.className = "speaker-emoji";
+      emoji.textContent = speakerEmoji;
+      label.append(emoji);
     }
     if (message.role === "assistant" && settings.showModelNames !== false) {
       const modelName = document.createElement("span");
       modelName.className = "message-model";
-      modelName.textContent = " · " + (message.model || "モデル不明");
+      modelName.textContent = message.model || "モデル不明";
       label.append(modelName);
     }
   });
@@ -2471,7 +2487,7 @@ const personaHutStyle = document.createElement("style");
 personaHutStyle.textContent = `.persona-hut-launch{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}.persona-hut-launch p{margin:0}.persona-hut-launch button{min-height:43px;border:0;border-radius:11px;background:var(--accent);color:#fff;font-weight:850}.persona-hut-dialog{width:min(680px,calc(100vw - 24px))}.persona-hut-intro{margin:0}.persona-hut-list{display:grid;gap:9px;max-height:58dvh;overflow:auto}.persona-hut-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-align:left}.persona-hut-card:hover{border-color:var(--accent)}.persona-hut-card>span:first-child{display:grid;gap:3px;min-width:0}.persona-hut-card strong{overflow-wrap:anywhere}.persona-hut-card small{color:var(--muted);line-height:1.45}.persona-hut-marker{display:grid;gap:3px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-weight:850;white-space:nowrap;text-align:center}.persona-hut-marker small{font-size:10px}.persona-hut-add{width:100%;min-height:44px;border:1px dashed var(--accent);border-radius:12px;background:var(--paper);color:var(--accent);font-weight:850}.persona-hut-fields{display:grid;grid-template-columns:120px 1fr;gap:9px}.persona-hut-fields .wide{grid-column:1/-1}.persona-hut-help{margin:0;color:var(--muted);font-size:12px;line-height:1.6}.persona-hut-danger{border:1px solid #e2b8c1!important;background:#fff!important;color:#a13b50!important}@media(max-width:560px){.persona-hut-fields{grid-template-columns:1fr}.persona-hut-fields .wide{grid-column:1}.persona-hut-card{align-items:flex-start}.persona-hut-marker{font-size:12px}}`;
 document.head.append(personaHutStyle);
 const speakerIconStyle = document.createElement("style");
-speakerIconStyle.textContent = `.speaker-icon{display:inline-block;width:2em;height:2em;margin-left:.38em;border-radius:50%;object-fit:cover;vertical-align:middle;background:var(--paper);box-shadow:0 0 0 1px var(--line)}.speaker-icon-settings{display:grid;gap:8px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.speaker-icon-settings>strong{font-size:13px}.speaker-icon-setting-row{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:9px}.speaker-icon-preview{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--card);border:1px solid var(--line)}.speaker-icon-preview[hidden]{display:block;opacity:.18}.speaker-icon-pick{display:flex;align-items:center;justify-content:center;min-height:38px;padding:7px 10px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-size:12px;font-weight:800;cursor:pointer}.speaker-icon-remove{min-height:38px;padding:7px 9px}.persona-icon-control{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:9px}.persona-icon-preview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--paper)}.persona-icon-preview[hidden]{display:block;opacity:.18}@media(max-width:560px){.speaker-icon-setting-row,.persona-icon-control{grid-template-columns:42px 1fr}.speaker-icon-setting-row>button,.persona-icon-control>button{grid-column:2}.persona-icon-preview{width:42px;height:42px}}`;
+speakerIconStyle.textContent = `.message-head .label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:.42em;letter-spacing:0}.speaker-icon{display:inline-block;width:2em;height:2em;margin:0;border-radius:50%;object-fit:cover;vertical-align:middle;flex:0 0 auto;background:var(--paper);box-shadow:0 0 0 1px var(--line)}.speaker-name{letter-spacing:.06em}.speaker-emoji{font-size:1.15em;line-height:1;letter-spacing:0}.message-model{color:var(--muted);font-weight:650;letter-spacing:.02em}.speaker-icon-settings{display:grid;gap:8px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.speaker-icon-settings>strong{font-size:13px}.speaker-icon-setting-row{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:9px}.speaker-icon-preview{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--card);border:1px solid var(--line)}.speaker-icon-preview[hidden]{display:block;opacity:.18}.speaker-icon-pick{display:flex;align-items:center;justify-content:center;min-height:38px;padding:7px 10px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-size:12px;font-weight:800;cursor:pointer}.speaker-icon-remove{min-height:38px;padding:7px 9px}.persona-icon-control{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:9px}.persona-icon-preview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--paper)}.persona-icon-preview[hidden]{display:block;opacity:.18}@media(max-width:560px){.speaker-icon-setting-row,.persona-icon-control{grid-template-columns:42px 1fr}.speaker-icon-setting-row>button,.persona-icon-control>button{grid-column:2}.persona-icon-preview{width:42px;height:42px}}`;
 document.head.append(speakerIconStyle);
 let speakerIconDrafts = { user: "", assistant: "" };
 const speakerIconSettings = document.createElement("section");
@@ -3211,7 +3227,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v68";
+document.querySelector(".app-version").textContent = "v69";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

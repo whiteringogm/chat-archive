@@ -196,6 +196,7 @@ function normalizePersonaProfile(profile, index = 0) {
     aliases: [...new Set((Array.isArray(profile?.aliases) ? profile.aliases : []).map(x => String(x).trim()).filter(Boolean))],
     diaryKind,
     diaryLabel: String(profile?.diaryLabel || defaultDiaryLabel(diaryKind, id)).trim(),
+    icon: String(profile?.icon || "").trim(),
   };
 }
 function ensurePersonaProfiles() {
@@ -274,6 +275,8 @@ let all = [],
   settings = {
     userName: "あなた",
     assistantName: "ChatGPT",
+    userIcon: "",
+    assistantIcon: "",
     replacements: "",
     theme: "light",
     showModelNames: true,
@@ -532,6 +535,106 @@ function nameOf(m, s) {
     ? persona.replace(/^\S+\s*/, "")
     : settings.assistantName || "ChatGPT";
 }
+function speakerIconOf(m, s) {
+  if (m.role === "user") return settings.userIcon || "";
+  const personaValue = folderPersonaForSession(s) || s.personaId || s.persona || "";
+  const profile = personaProfileFor(personaValue);
+  return profile ? profile.icon || "" : settings.assistantIcon || "";
+}
+function iconDataFromFile(file, size = 128) {
+  return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || "").startsWith("image/")) return reject(new Error("画像ファイルを選んでください。"));
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+        const side = Math.min(width, height);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(image, (width - side) / 2, (height - side) / 2, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/webp", 0.86) || canvas.toDataURL("image/png"));
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を読み込めませんでした。"));
+    };
+    image.src = url;
+  });
+}
+function scrollViewportBy(delta) {
+  if (!Number.isFinite(delta) || Math.abs(delta) < 0.25) return;
+  if (matchMedia("(max-width:760px)").matches) window.scrollBy(0, delta);
+  else $("viewer").scrollTop += delta;
+}
+function holdElementAtViewportTop(getElement, desiredTop, { maxMs = 6000 } = {}) {
+  const token = ++viewportRestoreToken;
+  const conversation = document.querySelector(".conversation");
+  let observer = null;
+  let finished = false;
+  document.documentElement.style.overflowAnchor = "none";
+  document.body.style.overflowAnchor = "none";
+  const correct = () => {
+    if (finished || token !== viewportRestoreToken) return;
+    const element = getElement();
+    if (!element || !Number.isFinite(desiredTop)) return;
+    scrollViewportBy(element.getBoundingClientRect().top - desiredTop);
+  };
+  const cleanup = () => {
+    if (finished) return;
+    finished = true;
+    observer?.disconnect();
+    ["touchstart", "wheel", "pointerdown"].forEach(type => window.removeEventListener(type, cancelForUser, true));
+    if (token === viewportRestoreToken) {
+      document.documentElement.style.overflowAnchor = "";
+      document.body.style.overflowAnchor = "";
+    }
+  };
+  const cancelForUser = () => cleanup();
+  ["touchstart", "wheel", "pointerdown"].forEach(type => window.addEventListener(type, cancelForUser, { capture: true, once: true, passive: true }));
+  correct();
+  requestAnimationFrame(() => {
+    correct();
+    requestAnimationFrame(correct);
+  });
+  if ("ResizeObserver" in window && conversation) {
+    observer = new ResizeObserver(() => requestAnimationFrame(correct));
+    observer.observe(conversation);
+  }
+  conversation?.querySelectorAll("img").forEach(image => {
+    if (!image.complete) {
+      image.addEventListener("load", correct, { once: true });
+      image.addEventListener("error", correct, { once: true });
+    }
+  });
+  document.fonts?.ready?.then(correct).catch(() => {});
+  [80, 220, 500, 1000, 2000, 4000].forEach(delay => setTimeout(correct, delay));
+  setTimeout(cleanup, maxMs);
+  return token;
+}
+function desiredViewportTopFor(element, block = "center") {
+  const mobile = matchMedia("(max-width:760px)").matches;
+  const area = mobile ? { top: 0, height: window.innerHeight } : $("viewer").getBoundingClientRect();
+  if (block === "start") return area.top + 12;
+  const height = element.getBoundingClientRect().height;
+  if (height > area.height * 0.72) return area.top + 12;
+  return area.top + Math.max(12, (area.height - height) / 2);
+}
+function jumpToElementStable(getElement, { block = "center" } = {}) {
+  const element = getElement();
+  if (!element) return;
+  holdElementAtViewportTop(getElement, desiredViewportTopFor(element, block));
+}
+function jumpToMessageStable(id, options) {
+  jumpToElementStable(() => $("msg-" + id), options);
+}
 function date(t) {
   return t
     ? new Intl.DateTimeFormat("ja-JP", {
@@ -764,7 +867,7 @@ function renderList() {
       openSession(b.dataset.sessionId);
       sessionMessageQuery = "";
       renderViewer();
-      setTimeout(() => $("msg-" + b.dataset.messageId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+      requestAnimationFrame(() => jumpToMessageStable(b.dataset.messageId));
       closeSidebar();
     });
     renderSearchBulk();
@@ -910,8 +1013,8 @@ function openMemoEditor(s, anchorId = null, note = null) {
   setTimeout(() => $("memoText").focus(), 0);
 }
 function renderSessionPanel(){const p=$("sessionPanel"),s=all.find(x=>x.id===selected);if(!p)return;if(!s){p.innerHTML='<p class="muted">セッションを開くと使えます。</p>';return}s.namedSelections=Array.isArray(s.namedSelections)?s.namedSelections:[];s.notes=Array.isArray(s.notes)?s.notes:[];const n=messageSelected.size,shown=visibleMessages(s),q=sessionMessageQuery.trim().toLowerCase(),hitCount=shown.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!q||includesAllTerms(m.text, q))).length,filtering=Boolean(q||sessionModelFilter);p.innerHTML=`<div class="session-panel-head"><strong>このセッション</strong><button id="closeSessionPanel" aria-label="閉じる">×</button></div><div class="session-panel-grid"><button id="sessionTop" class="session-panel-action">↑ 最上部</button><button id="sessionBottom" class="session-panel-action">↓ 最下部</button><button id="panelCopy" class="session-panel-action primary" ${n?"":"disabled"}>コピー（${n}）</button><button id="panelSaveMemory" class="session-panel-action primary" ${n?"":"disabled"}>新しい思い出に保存</button><button id="panelAppendMemory" class="session-panel-action wide" ${n&&s.namedSelections.length?"":"disabled"}>選択中の${n}件を既存の思い出に追加</button></div><div class="session-panel-section"><label>セッション内発言検索<input id="panelSessionSearch" type="search" value="${esc(sessionMessageQuery)}" placeholder="発言本文を検索"></label><label>モデル絞り込み<select id="panelModelFilter"><option value="">すべてのモデル</option>${s.models.map(x=>`<option value="${esc(x)}" ${x===sessionModelFilter?"selected":""}>${esc(x)}</option>`).join("")}</select></label><label class="session-panel-check"><input id="panelIncludePrevious" type="checkbox" ${sessionIncludePrevious?"checked":""} ${sessionModelFilter?"":"disabled"}>直前の入力も表示</label><span id="panelFilterCount" class="session-panel-count">${filtering?`${hitCount} / ${shown.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。"}</span><button id="panelShowResults" class="session-panel-result" ${filtering?"":"disabled"}>検索結果を見る</button></div><div class="session-panel-section"><strong>このセッション内の思い出（${s.namedSelections.length}）</strong><div class="session-panel-memories">${s.namedSelections.length?s.namedSelections.map(x=>`<button class="session-panel-memory" data-panel-memory="${esc(x.id)}">${esc(x.title)}（${x.messageIds.length}件）</button>`).join(""):'<span class="session-panel-count">まだ保存されていません。</span>'}</div></div><div class="session-panel-section"><strong>このセッションのメモ（${s.notes.length}）</strong><div class="session-panel-memories">${s.notes.length?s.notes.map(x=>`<button class="session-panel-memory" data-panel-note="${esc(x.id)}">${esc(String(x.text || "").replace(/\s+/g," ").slice(0,60))}${String(x.text || "").length>60?"…":""}</button>`).join(""):'<span class="session-panel-count">まだ保存されていません。</span>'}</div></div><div class="session-panel-section"><button id="focusModeBtn" class="session-panel-action">UI非表示で全画面表示</button></div>`;
-$("closeSessionPanel").onclick=closeSessionPanel;$("sessionTop").onclick=()=>scrollSessionEdge(false);$("sessionBottom").onclick=()=>scrollSessionEdge(true);$("panelCopy").onclick=()=>{closeSessionPanel();$("copyMessages")?.click()};$("panelSaveMemory").onclick=()=>{closeSessionPanel();$("saveNamedSelection")?.click()};$("panelAppendMemory").onclick=()=>{closeSessionPanel();$("appendNamedSelection")?.click()};$("panelShowResults").onclick=()=>{closeSessionPanel();requestAnimationFrame(()=>document.querySelector(".conversation .message")?.scrollIntoView({behavior:"smooth",block:"start"}))};const panelSearch=$("panelSessionSearch");let panelSearchComposing=false;const applyPanelSearch=()=>{const value=panelSearch.value;if(value===sessionMessageQuery)return;sessionMessageQuery=value;renderViewer({updatePanel:false});const current=all.find(x=>x.id===selected),messages=current?visibleMessages(current):[],needle=sessionMessageQuery.trim().toLowerCase(),count=messages.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!needle||includesAllTerms(m.text, needle))).length,filteringNow=Boolean(needle||sessionModelFilter),status=$("panelFilterCount"),show=$("panelShowResults");if(status)status.textContent=filteringNow?`${count} / ${messages.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。";if(show)show.disabled=!filteringNow};panelSearch.oncompositionstart=()=>{panelSearchComposing=true};panelSearch.oncompositionend=()=>{panelSearchComposing=false;queueMicrotask(applyPanelSearch)};panelSearch.oninput=e=>{if(panelSearchComposing||e.isComposing)return;applyPanelSearch()};$("panelModelFilter").onchange=e=>{sessionModelFilter=e.target.value;if(!sessionModelFilter)sessionIncludePrevious=false;renderViewer();};$("panelIncludePrevious").onchange=e=>{sessionIncludePrevious=e.target.checked;renderViewer();};document.querySelectorAll("[data-panel-memory]").forEach(b=>b.onclick=()=>{const m=s.namedSelections.find(x=>x.id===b.dataset.panelMemory);activeNamedSelection=m?.id||"";sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();const first=m?.messageIds.find(id=>visibleMessages(s).some(x=>x.id===id));if(first)setTimeout(()=>$("msg-"+first)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});document.querySelectorAll("[data-panel-note]").forEach(b=>b.onclick=()=>{const noteId=b.dataset.panelNote;sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();setTimeout(()=>$("note-"+noteId)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});$("focusModeBtn").onclick=()=>{closeSessionPanel();closeSidebar();document.body.classList.add("focus-mode")}}
-function renderViewer({updatePanel=true}={}) {
+$("closeSessionPanel").onclick=closeSessionPanel;$("sessionTop").onclick=()=>scrollSessionEdge(false);$("sessionBottom").onclick=()=>scrollSessionEdge(true);$("panelCopy").onclick=()=>{closeSessionPanel();$("copyMessages")?.click()};$("panelSaveMemory").onclick=()=>{closeSessionPanel();$("saveNamedSelection")?.click()};$("panelAppendMemory").onclick=()=>{closeSessionPanel();$("appendNamedSelection")?.click()};$("panelShowResults").onclick=()=>{closeSessionPanel();requestAnimationFrame(()=>document.querySelector(".conversation .message")?.scrollIntoView({behavior:"smooth",block:"start"}))};const panelSearch=$("panelSessionSearch");let panelSearchComposing=false;const applyPanelSearch=()=>{const value=panelSearch.value;if(value===sessionMessageQuery)return;sessionMessageQuery=value;renderViewer({updatePanel:false});const current=all.find(x=>x.id===selected),messages=current?visibleMessages(current):[],needle=sessionMessageQuery.trim().toLowerCase(),count=messages.filter(m=>(!sessionModelFilter||(m.role==="assistant"&&m.model===sessionModelFilter))&&(!needle||includesAllTerms(m.text, needle))).length,filteringNow=Boolean(needle||sessionModelFilter),status=$("panelFilterCount"),show=$("panelShowResults");if(status)status.textContent=filteringNow?`${count} / ${messages.length} 発言が該当`:"検索語かモデルを指定すると、該当件数を表示します。";if(show)show.disabled=!filteringNow};panelSearch.oncompositionstart=()=>{panelSearchComposing=true};panelSearch.oncompositionend=()=>{panelSearchComposing=false;queueMicrotask(applyPanelSearch)};panelSearch.oninput=e=>{if(panelSearchComposing||e.isComposing)return;applyPanelSearch()};$("panelModelFilter").onchange=e=>{sessionModelFilter=e.target.value;if(!sessionModelFilter)sessionIncludePrevious=false;renderViewer();};$("panelIncludePrevious").onchange=e=>{sessionIncludePrevious=e.target.checked;renderViewer();};document.querySelectorAll("[data-panel-memory]").forEach(b=>b.onclick=()=>{const m=s.namedSelections.find(x=>x.id===b.dataset.panelMemory);activeNamedSelection=m?.id||"";sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();const first=m?.messageIds.find(id=>visibleMessages(s).some(x=>x.id===id));if(first)requestAnimationFrame(() => jumpToMessageStable(first))});document.querySelectorAll("[data-panel-note]").forEach(b=>b.onclick=()=>{const noteId=b.dataset.panelNote;sessionMessageQuery="";sessionModelFilter="";sessionIncludePrevious=false;renderViewer();closeSessionPanel();setTimeout(()=>$("note-"+noteId)?.scrollIntoView({behavior:"smooth",block:"center"}),0)});$("focusModeBtn").onclick=()=>{closeSessionPanel();closeSidebar();document.body.classList.add("focus-mode")}}
+function renderViewer({updatePanel=true, autoFocusHit=true}={}) {
   const s = all.find((x) => x.id === selected);
   if (!s) return;
   s.namedSelections = Array.isArray(s.namedSelections) ? s.namedSelections : [];
@@ -958,6 +1061,15 @@ function renderViewer({updatePanel=true}={}) {
     const label = document.getElementById("msg-" + message.id)?.querySelector(".label");
     if (!label) return;
     label.textContent = nameOf(message, s);
+    const speakerIcon = speakerIconOf(message, s);
+    if (speakerIcon) {
+      const icon = document.createElement("img");
+      icon.className = "speaker-icon";
+      icon.src = speakerIcon;
+      icon.alt = "";
+      icon.decoding = "async";
+      label.append(" ", icon);
+    }
     if (message.role === "assistant" && settings.showModelNames !== false) {
       const modelName = document.createElement("span");
       modelName.className = "message-model";
@@ -1000,53 +1112,20 @@ function renderViewer({updatePanel=true}={}) {
     }),
   );
   const rerenderKeepingPosition = (anchorId) => {
-    const restoreToken = ++viewportRestoreToken;
     const anchorTop = anchorId
         ? $("msg-" + anchorId)?.getBoundingClientRect().top
         : null,
       viewerTop = $("viewer").scrollTop,
       pageTop = window.scrollY;
     document.activeElement?.blur?.();
-    document.documentElement.style.overflowAnchor = "none";
-    document.body.style.overflowAnchor = "none";
-    renderViewer();
-    let stableFrames = 0;
-    const restorePosition = () => {
-      if (restoreToken !== viewportRestoreToken) return true;
-      const nextAnchor = anchorId ? $("msg-" + anchorId) : null;
-      if (Number.isFinite(anchorTop) && nextAnchor) {
-        const delta = nextAnchor.getBoundingClientRect().top - anchorTop;
-        if (Math.abs(delta) < 0.5) stableFrames += 1;
-        else stableFrames = 0;
-        if (matchMedia("(max-width:760px)").matches) window.scrollBy(0, delta);
-        else $("viewer").scrollTop += delta;
-      } else {
-        $("viewer").scrollTop = viewerTop;
-        window.scrollTo(0, pageTop);
-      }
-      return stableFrames >= 3;
-    };
-    let frames = 0;
-    const followLayout = () => {
-      const stable = restorePosition();
-      frames += 1;
-      if (!stable && frames < 18) requestAnimationFrame(followLayout);
-      else if (restoreToken === viewportRestoreToken) {
-        document.documentElement.style.overflowAnchor = "";
-        document.body.style.overflowAnchor = "";
-      }
-    };
-    requestAnimationFrame(followLayout);
-    [100, 250, 500].forEach((delay) =>
-      setTimeout(() => {
-        if (restoreToken !== viewportRestoreToken) return;
-        restorePosition();
-        if (delay === 500) {
-          document.documentElement.style.overflowAnchor = "";
-          document.body.style.overflowAnchor = "";
-        }
-      }, delay),
-    );
+    renderViewer({ autoFocusHit: false });
+    if (Number.isFinite(anchorTop) && $("msg-" + anchorId)) {
+      holdElementAtViewportTop(() => $("msg-" + anchorId), anchorTop);
+    } else {
+      ++viewportRestoreToken;
+      $("viewer").scrollTop = viewerTop;
+      window.scrollTo(0, pageTop);
+    }
   };
   $("sessionPersona").onchange = (e) => {
     s.persona = e.target.value;
@@ -1115,7 +1194,7 @@ function renderViewer({updatePanel=true}={}) {
     sessionModelFilter="";
     sessionIncludePrevious=false;
     renderViewer();
-    setTimeout(()=>$("msg-"+id)?.scrollIntoView({behavior:"smooth",block:"center"}),0)
+    requestAnimationFrame(() => jumpToMessageStable(id))
   });
   document.querySelectorAll("[data-memory-id]").forEach(
     (b) =>
@@ -1128,15 +1207,7 @@ function renderViewer({updatePanel=true}={}) {
           first = range?.messageIds.find((id) =>
             shown.some((m) => m.id === id),
           );
-        if (first)
-          setTimeout(
-            () =>
-              $(`msg-${first}`)?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              }),
-            0,
-          );
+        if (first) requestAnimationFrame(() => jumpToMessageStable(first));
       }),
   );
   if ($("deleteNamedSelection"))
@@ -1155,7 +1226,7 @@ function renderViewer({updatePanel=true}={}) {
       messageSelectionAnchor = active.messageIds.at(-1) || "";
       renderViewer();
       const first = active.messageIds.find((id) => $("msg-" + id));
-      if (first) setTimeout(() => $("msg-" + first)?.scrollIntoView({ block: "center" }), 0);
+      if (first) requestAnimationFrame(() => jumpToMessageStable(first));
     };
   if ($("renameNamedSelection"))
     $("renameNamedSelection").onclick = async () => {
@@ -1201,14 +1272,7 @@ function renderViewer({updatePanel=true}={}) {
       messageSelectionAnchor = "";
       await save();
       renderViewer();
-      setTimeout(
-        () =>
-          $(`msg-${item.messageIds[0]}`)?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          }),
-        0,
-      );
+      requestAnimationFrame(() => jumpToMessageStable(item.messageIds[0]));
     };
   if ($("cancelMessageCopy"))
     $("cancelMessageCopy").onclick = () => {
@@ -1277,7 +1341,7 @@ function renderViewer({updatePanel=true}={}) {
       JSON.stringify(exportSession(s), null, 2),
       "application/json",
     );
-  if (q) $("viewer").querySelector(".hit")?.scrollIntoView({ block: "center" });
+  if (q && autoFocusHit) jumpToElementStable(() => $("viewer").querySelector(".hit"));
 }
 function personaOptions() {
   return [
@@ -1536,15 +1600,7 @@ function openSession(id, { inheritSearch = false } = {}) {
     const first = visibleMessages(s).find((m) =>
       includesAllTerms(m.text, inheritedQuery),
     );
-    if (first)
-      setTimeout(
-        () =>
-          $("msg-" + first.id)?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          }),
-        0,
-      );
+    if (first) requestAnimationFrame(() => jumpToMessageStable(first.id));
   }
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
@@ -1831,15 +1887,7 @@ function openMemory(sessionId, memoryId) {
   const first = memory?.messageIds.find((id) =>
     session.messages.some((message) => message.id === id && !message.hidden),
   );
-  if (first)
-    setTimeout(
-      () =>
-        $(`msg-${first}`)?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        }),
-      0,
-    );
+  if (first) requestAnimationFrame(() => jumpToMessageStable(first));
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function renderMemories() {
@@ -2139,6 +2187,8 @@ $("settingsBtn").onclick = () => {
   renderManagers();
   updateBackupSummary();
   $("showModelNames").checked = settings.showModelNames !== false;
+  speakerIconDrafts = { user: settings.userIcon || "", assistant: settings.assistantIcon || "" };
+  renderSpeakerIconSettings();
   $("settings").showModal();
 };
 $("addFolder").onclick = () => addCustom("folder");
@@ -2190,6 +2240,8 @@ $("saveSettings").onclick = () => {
     showModelNames: $("showModelNames").checked,
     userName: $("userName").value.trim() || "ユーザー",
     assistantName: $("assistantName").value.trim() || "ChatGPT",
+    userIcon: speakerIconDrafts.user || "",
+    assistantIcon: speakerIconDrafts.assistant || "",
     replacements: $("replacements").value,
   };
   applyTheme();
@@ -2418,6 +2470,37 @@ const me47=memoryExportPayload;memoryExportPayload=function(s,m){const x=me47(s,
 const personaHutStyle = document.createElement("style");
 personaHutStyle.textContent = `.persona-hut-launch{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}.persona-hut-launch p{margin:0}.persona-hut-launch button{min-height:43px;border:0;border-radius:11px;background:var(--accent);color:#fff;font-weight:850}.persona-hut-dialog{width:min(680px,calc(100vw - 24px))}.persona-hut-intro{margin:0}.persona-hut-list{display:grid;gap:9px;max-height:58dvh;overflow:auto}.persona-hut-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-align:left}.persona-hut-card:hover{border-color:var(--accent)}.persona-hut-card>span:first-child{display:grid;gap:3px;min-width:0}.persona-hut-card strong{overflow-wrap:anywhere}.persona-hut-card small{color:var(--muted);line-height:1.45}.persona-hut-marker{display:grid;gap:3px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-weight:850;white-space:nowrap;text-align:center}.persona-hut-marker small{font-size:10px}.persona-hut-add{width:100%;min-height:44px;border:1px dashed var(--accent);border-radius:12px;background:var(--paper);color:var(--accent);font-weight:850}.persona-hut-fields{display:grid;grid-template-columns:120px 1fr;gap:9px}.persona-hut-fields .wide{grid-column:1/-1}.persona-hut-help{margin:0;color:var(--muted);font-size:12px;line-height:1.6}.persona-hut-danger{border:1px solid #e2b8c1!important;background:#fff!important;color:#a13b50!important}@media(max-width:560px){.persona-hut-fields{grid-template-columns:1fr}.persona-hut-fields .wide{grid-column:1}.persona-hut-card{align-items:flex-start}.persona-hut-marker{font-size:12px}}`;
 document.head.append(personaHutStyle);
+const speakerIconStyle = document.createElement("style");
+speakerIconStyle.textContent = `.speaker-icon{display:inline-block;width:2em;height:2em;margin-left:.38em;border-radius:50%;object-fit:cover;vertical-align:middle;background:var(--paper);box-shadow:0 0 0 1px var(--line)}.speaker-icon-settings{display:grid;gap:8px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.speaker-icon-settings>strong{font-size:13px}.speaker-icon-setting-row{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:9px}.speaker-icon-preview{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--card);border:1px solid var(--line)}.speaker-icon-preview[hidden]{display:block;opacity:.18}.speaker-icon-pick{display:flex;align-items:center;justify-content:center;min-height:38px;padding:7px 10px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-size:12px;font-weight:800;cursor:pointer}.speaker-icon-remove{min-height:38px;padding:7px 9px}.persona-icon-control{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:9px}.persona-icon-preview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--paper)}.persona-icon-preview[hidden]{display:block;opacity:.18}@media(max-width:560px){.speaker-icon-setting-row,.persona-icon-control{grid-template-columns:42px 1fr}.speaker-icon-setting-row>button,.persona-icon-control>button{grid-column:2}.persona-icon-preview{width:42px;height:42px}}`;
+document.head.append(speakerIconStyle);
+let speakerIconDrafts = { user: "", assistant: "" };
+const speakerIconSettings = document.createElement("section");
+speakerIconSettings.className = "speaker-icon-settings";
+speakerIconSettings.innerHTML = '<strong>話者アイコン</strong><div class="speaker-icon-setting-row"><img id="userIconPreview" class="speaker-icon-preview" alt=""><label class="speaker-icon-pick">ユーザー画像を選ぶ<input id="userIconFile" type="file" accept="image/*" hidden></label><button id="userIconRemove" type="button" class="speaker-icon-remove">外す</button></div><div class="speaker-icon-setting-row"><img id="assistantIconPreview" class="speaker-icon-preview" alt=""><label class="speaker-icon-pick">既定AI画像を選ぶ<input id="assistantIconFile" type="file" accept="image/*" hidden></label><button id="assistantIconRemove" type="button" class="speaker-icon-remove">外す</button></div><small class="muted">ペルソナの画像は「ペルソナ管理小屋」で設定できます。画像は端末内で小さくして保存します。</small>';
+$("assistantName")?.closest("label")?.after(speakerIconSettings);
+function renderSpeakerIconSettings() {
+  [["user", "userIconPreview"], ["assistant", "assistantIconPreview"]].forEach(([key, id]) => {
+    const preview = $(id);
+    const value = speakerIconDrafts[key] || "";
+    preview.src = value || "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+    preview.hidden = !value;
+  });
+}
+[["user", "userIconFile"], ["assistant", "assistantIconFile"]].forEach(([key, id]) => {
+  $(id).onchange = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      speakerIconDrafts[key] = await iconDataFromFile(file);
+      renderSpeakerIconSettings();
+    } catch (error) {
+      alert(error.message || "画像を設定できませんでした。");
+    }
+  };
+});
+$("userIconRemove").onclick = () => { speakerIconDrafts.user = ""; renderSpeakerIconSettings(); };
+$("assistantIconRemove").onclick = () => { speakerIconDrafts.assistant = ""; renderSpeakerIconSettings(); };
 const personaHut = document.createElement("dialog");
 personaHut.id = "personaHut";
 personaHut.className = "persona-hut-dialog";
@@ -2469,7 +2552,26 @@ function updatePersonaReferences(profile, previous = {}) {
 function openPersonaEditor(id = "") {
   const existing = personaProfiles().find(profile => profile.id === id) || null;
   const base = existing || normalizePersonaProfile({ id: `persona-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, emoji: "", displayName: "", identifier: "", aliases: [] });
-  personaEditor.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (existing ? "ペルソナを整える" : "新しいペルソナを迎える") + '</h2><button value="cancel" class="icon-btn" aria-label="閉じる">×</button></div><div class="persona-hut-fields"><label>日記絵文字<input id="personaEditEmoji" value="' + esc(base.emoji) + '" placeholder="🕯️"></label><label>日記の種別名<input id="personaEditDiaryLabel" value="' + esc(base.diaryLabel) + '" placeholder="今日の記録"></label><label class="wide">表示名<input id="personaEditDisplay" value="' + esc(base.displayName) + '" placeholder="🕯️ かげちゃん"></label><label class="wide">識別名<input id="personaEditIdentifier" value="' + esc(base.identifier) + '" placeholder="影山誠実"></label><label class="wide">別名<textarea id="personaEditAliases" rows="4" placeholder="かげちゃん、🕯️かげちゃん">' + esc(base.aliases.join("\n")) + '</textarea></label></div><p class="persona-hut-help">日記は <strong>📓＋日記絵文字＋日付</strong> から、ペルソナと種別を同時に判別します。種別名は後から変更でき、登録済みの日記にも反映されます。絵文字を変更しても、以前の絵文字は過去ログ用の目印として残ります。</p><div class="dialog-actions">' + (existing ? '<button id="personaDelete" type="button" class="persona-hut-danger">削除</button>' : '<span></span>') + '<span><button value="cancel" class="secondary-action">キャンセル</button> <button id="personaSave" type="button">保存</button></span></div></form>';
+  let iconDraft = base.icon || "";
+  personaEditor.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (existing ? "ペルソナを整える" : "新しいペルソナを迎える") + '</h2><button value="cancel" class="icon-btn" aria-label="閉じる">×</button></div><div class="persona-hut-fields"><label>日記絵文字<input id="personaEditEmoji" value="' + esc(base.emoji) + '" placeholder="🕯️"></label><label>日記の種別名<input id="personaEditDiaryLabel" value="' + esc(base.diaryLabel) + '" placeholder="今日の記録"></label><label class="wide">表示名<input id="personaEditDisplay" value="' + esc(base.displayName) + '" placeholder="🕯️ かげちゃん"></label><label class="wide">識別名<input id="personaEditIdentifier" value="' + esc(base.identifier) + '" placeholder="影山誠実"></label><label class="wide">話者アイコン<div class="persona-icon-control"><img id="personaEditIconPreview" class="persona-icon-preview" src="' + esc(base.icon || "data:image/gif;base64,R0lGODlhAQABAAAAACw=") + '" ' + (base.icon ? "" : "hidden") + ' alt=""><label class="speaker-icon-pick">画像を選ぶ<input id="personaEditIconFile" type="file" accept="image/*" hidden></label><button id="personaEditIconRemove" type="button" class="speaker-icon-remove">外す</button></div></label><label class="wide">別名<textarea id="personaEditAliases" rows="4" placeholder="かげちゃん、🕯️かげちゃん">' + esc(base.aliases.join("\n")) + '</textarea></label></div><p class="persona-hut-help">日記は <strong>📓＋日記絵文字＋日付</strong> から、ペルソナと種別を同時に判別します。種別名は後から変更でき、登録済みの日記にも反映されます。絵文字を変更しても、以前の絵文字は過去ログ用の目印として残ります。</p><div class="dialog-actions">' + (existing ? '<button id="personaDelete" type="button" class="persona-hut-danger">削除</button>' : '<span></span>') + '<span><button value="cancel" class="secondary-action">キャンセル</button> <button id="personaSave" type="button">保存</button></span></div></form>';
+  const personaIconPreview = personaEditor.querySelector("#personaEditIconPreview");
+  personaEditor.querySelector("#personaEditIconFile").onchange = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      iconDraft = await iconDataFromFile(file);
+      personaIconPreview.src = iconDraft;
+      personaIconPreview.hidden = false;
+    } catch (error) {
+      alert(error.message || "画像を設定できませんでした。");
+    }
+  };
+  personaEditor.querySelector("#personaEditIconRemove").onclick = () => {
+    iconDraft = "";
+    personaIconPreview.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+    personaIconPreview.hidden = true;
+  };
   personaEditor.querySelector("#personaSave").onclick = async () => {
     const emoji = personaEditor.querySelector("#personaEditEmoji").value.trim();
     const displayName = personaEditor.querySelector("#personaEditDisplay").value.trim();
@@ -2491,6 +2593,7 @@ function openPersonaEditor(id = "") {
     next.identifier = identifier;
     next.diaryKind = diaryKind;
     next.diaryLabel = diaryLabel;
+    next.icon = iconDraft;
     next.aliases = [...new Set([...aliases, ...(existing && existing.displayName !== displayName ? [existing.displayName] : []), ...(existing && existing.identifier !== identifier ? [existing.identifier] : [])])];
     if (!existing) settings.personaProfiles.push(next);
     ensurePersonaProfiles();
@@ -2842,7 +2945,7 @@ function dlJump(entry) {
   if (!entry.sessionId || !entry.messageId) return alert("手動登録の日記には元発言がありません。");
   openSession(entry.sessionId);
   renderViewer();
-  setTimeout(() => $("msg-" + entry.messageId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+  requestAnimationFrame(() => jumpToMessageStable(entry.messageId));
 }
 function dlPersonaSelectOptions(base) {
   const current = personaDisplay(base?.personaId || base?.persona || "");
@@ -3108,7 +3211,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v67";
+document.querySelector(".app-version").textContent = "v68";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

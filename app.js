@@ -7,6 +7,9 @@ document.head.append(sessionPanelStyle);
 const displayPreferenceStyle = document.createElement("style");
 displayPreferenceStyle.textContent = `.focus-mode .message-time{display:none!important}.hide-model-names .message-model,.hide-model-names .session-models{display:none!important}.display-setting-check{display:flex;align-items:center;gap:9px}.display-setting-check input{width:auto;min-height:auto}`;
 document.head.append(displayPreferenceStyle);
+const citationStyle = document.createElement("style");
+citationStyle.textContent = `.citation-chip{display:inline-flex;align-items:center;vertical-align:.08em;margin:0 .14em;padding:.08em .46em;border:1px solid currentColor;border-radius:999px;color:inherit;font-size:.7em;font-weight:700;line-height:1.25;opacity:.58;white-space:nowrap}`;
+document.head.append(citationStyle);
 const displayPreferenceControl = document.createElement("label");
 displayPreferenceControl.className = "display-setting-check";
 displayPreferenceControl.innerHTML = '<input id="showModelNames" type="checkbox" checked> 発言のモデル名を表示';
@@ -518,6 +521,8 @@ function effectivePersona(s) {
   const folderPersona = folderPersonaForSession(s);
   return personaDisplay(folderPersona || s.personaId || s.persona || "未分類");
 }
+const citationMarkerPattern = /(?:\uE200cite(?:\uE202[^\uE200\uE201]*)+\uE201)(?:\s*(?:\uE200cite(?:\uE202[^\uE200\uE201]*)+\uE201))*/g;
+const citationPlaceholder = "\uE000citation-source\uE001";
 function replaceText(text) {
   let out = String(text ?? "");
   for (const line of settings.replacements.split("\n")) {
@@ -527,6 +532,15 @@ function replaceText(text) {
       out = out.split(from.trim()).join(to.trim());
   }
   return out;
+}
+function collapseCitationMarkers(text) {
+  return replaceText(text).replace(citationMarkerPattern, citationPlaceholder);
+}
+function restoreCitationChips(html) {
+  return html.split(citationPlaceholder).join('<span class="citation-chip" aria-label="ChatGPTの出典参照">出典</span>');
+}
+function citationText(text) {
+  return collapseCitationMarkers(text).split(citationPlaceholder).join("出典");
 }
 function nameOf(m, s) {
   if (m.role === "user") return settings.userName || "ユーザー";
@@ -791,7 +805,7 @@ function matchInfo(s, q) {
       count: 0,
       preview: "タイトルに一致",
     };
-  const text = replaceText(first.text),
+  const text = citationText(first.text),
     lower = text.toLowerCase(),
     positions = terms.map((term) => lower.indexOf(term)).filter((at) => at >= 0),
     at = positions.length ? Math.min(...positions) : 0,
@@ -865,7 +879,7 @@ function renderList() {
       (!q || includesAllTerms(m.text, q))) : [];
     $("summary").textContent = s ? `${messages.length} / ${visibleMessages(s).length} 発言` : "セッションを開いてください。";
     $("sessions").innerHTML = messages.map((m) =>
-      `<article class="search-message"><small>${esc(nameOf(m, s))} · ${esc(messageDate(m.time))}</small><div>${q ? mark(replaceText(m.text).slice(0,240), q) : esc(replaceText(m.text).slice(0,240))}</div><button class="open-message" data-session-id="${esc(s.id)}" data-message-id="${esc(m.id)}">元の位置へ</button></article>`
+      `<article class="search-message"><small>${esc(nameOf(m, s))} · ${esc(messageDate(m.time))}</small><div>${q ? mark(citationText(m.text).slice(0,240), q) : esc(citationText(m.text).slice(0,240))}</div><button class="open-message" data-session-id="${esc(s.id)}" data-message-id="${esc(m.id)}">元の位置へ</button></article>`
     ).join("") || '<p class="muted">該当する発言がありません。</p>';
     $("backToGlobalResults")?.addEventListener("click", () => setSearchMode("body"));
     document.querySelectorAll(".open-message").forEach((b) => b.onclick = () => {
@@ -920,19 +934,19 @@ function renderList() {
   renderSearchBulk();
 }
 function mark(text, q) {
-  let h = esc(replaceText(text));
+  let h = esc(collapseCitationMarkers(text));
   const terms = searchTerms(q).sort((a, b) => b.length - a.length);
-  if (!terms.length) return h;
+  if (!terms.length) return restoreCitationChips(h);
   const safe = terms
     .map((term) => esc(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
-  return h.replace(
+  return restoreCitationChips(h.replace(
     new RegExp(safe, "gi"),
     (x) => `<mark class="hit">${x}</mark>`,
-  );
+  ));
 }
 function inlineMarkdown(text) {
-  return esc(text)
+  return restoreCitationChips(esc(text))
     .replace(/`([^`\n]+)`/g, "<code>$1</code>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
@@ -941,7 +955,7 @@ function inlineMarkdown(text) {
     .replace(/(^|[^\w])\*([^*\n]+)\*/g, "$1<em>$2</em>");
 }
 function renderMarkdown(text) {
-  const lines = replaceText(text).replace(/\r\n?/g, "\n").split("\n");
+  const lines = collapseCitationMarkers(text).replace(/\r\n?/g, "\n").split("\n");
   let html = "", paragraph = [], list = "", code = false, codeLines = [];
   const flushParagraph = () => {
     if (!paragraph.length) return;
@@ -3227,7 +3241,7 @@ dlHeaderButton.type = "button";
 dlHeaderButton.textContent = "☾ 日記";
 document.querySelector(".header-actions")?.prepend(dlHeaderButton);
 dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v69";
+document.querySelector(".app-version").textContent = "v70";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;

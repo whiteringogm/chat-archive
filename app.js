@@ -86,20 +86,22 @@ const esc = (s) =>
           "'": "&#39;",
         })[c],
     );
-function closeSessionPanel(){document.body.classList.remove("session-panel-open");$("sessionPanel")?.setAttribute("aria-hidden","true");$("sessionMenuBtn")?.setAttribute("aria-expanded","false")}
-function openSessionPanel(){if(!selected)return alert("先にセッションを開いてください。");closeSidebar();renderSessionPanel();document.body.classList.add("session-panel-open");$("sessionPanel")?.setAttribute("aria-hidden","false");$("sessionMenuBtn")?.setAttribute("aria-expanded","true")}
+function closeSessionPanel(){document.body.classList.remove("session-panel-open");$("sessionPanel")?.setAttribute("aria-hidden","true");$("sessionMenuBtn")?.setAttribute("aria-expanded","false");updateBottomNavigation()}
+function openSessionPanel(){if(!selected)return alert("先にセッションを開いてください。");closeSidebar();renderSessionPanel();document.body.classList.add("session-panel-open");$("sessionPanel")?.setAttribute("aria-hidden","false");$("sessionMenuBtn")?.setAttribute("aria-expanded","true");updateBottomNavigation()}
 function scrollSessionEdge(bottom){closeSessionPanel();const v=$("viewer");if(matchMedia("(max-width:760px)").matches)window.scrollTo({top:bottom?document.documentElement.scrollHeight:0,behavior:"smooth"});else v?.scrollTo({top:bottom?v.scrollHeight:0,behavior:"smooth"})}
 function openSidebar() {
   if (matchMedia("(max-width:760px)").matches)
     document.body.classList.add("sidebar-open");
   else document.body.classList.remove("sidebar-collapsed");
   $("menuBtn").setAttribute("aria-expanded", "true");
+  updateBottomNavigation();
 }
 function closeSidebar() {
   if (matchMedia("(max-width:760px)").matches)
     document.body.classList.remove("sidebar-open");
   else document.body.classList.add("sidebar-collapsed");
   $("menuBtn").setAttribute("aria-expanded", "false");
+  updateBottomNavigation();
 }
 ["search", "model", "persona", "folder", "speaker", "dateFrom", "dateTo", "excludeKeyword", "excludeModel", "excludePersona", "excludeFolder", "excludeSpeaker"].forEach((id) =>
   $(id).addEventListener(
@@ -273,8 +275,11 @@ let all = [],
   editingMemoryId = "",
   viewportRestoreToken = 0,
   navigationBackStack = [],
+  navigationReady = false,
+  navigationRestoring = false,
   activeNamedSelection = "",
   memoDraft = null,
+  settingsReadingPosition = null,
   settings = {
     userName: "あなた",
     assistantName: "ChatGPT",
@@ -679,6 +684,40 @@ function captureReadingPosition() {
     viewerScroll: viewer.scrollTop,
     pageScroll: window.scrollY,
   };
+}
+function capturePersistentReadingPosition() {
+  const position = captureReadingPosition();
+  if (!position) return null;
+  const message = position.element.closest?.(".message");
+  const memo = position.element.closest?.(".memo-card");
+  const noteEntry = position.element.closest?.(".note-entry");
+  const noteButton = noteEntry?.querySelector?.("[data-open-note]");
+  return {
+    ...position,
+    anchorType: message ? "message" : memo ? "memo" : noteButton ? "note" : "",
+    anchorId: message?.id || memo?.id || noteButton?.dataset.openNote || "",
+  };
+}
+function restorePersistentReadingPosition(position) {
+  if (!position) return;
+  const getElement = () => {
+    if (position.anchorType === "message")
+      return document.getElementById(position.anchorId)?.querySelector(".body");
+    if (position.anchorType === "memo")
+      return document.getElementById(position.anchorId)?.querySelector(".markdown-body");
+    if (position.anchorType === "note")
+      return document.querySelector('[data-open-note="' + CSS.escape(position.anchorId) + '"]')?.closest(".note-entry");
+    return null;
+  };
+  if (getElement()) holdElementAtViewportTop(getElement, position.top);
+  else {
+    ++viewportRestoreToken;
+    const restoreScroll = () => {
+      $("viewer").scrollTop = position.viewerScroll;
+      window.scrollTo(0, position.pageScroll);
+    };
+    requestAnimationFrame(() => { restoreScroll(); requestAnimationFrame(restoreScroll); });
+  }
 }
 function setFocusMode(enabled) {
   if (document.body.classList.contains("focus-mode") === enabled) return;
@@ -1251,16 +1290,7 @@ function renderViewer({updatePanel=true, autoFocusHit=true}={}) {
   );
   document.querySelectorAll("[data-jump-mid]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.jumpMid;
-    navigationBackStack.push({
-      selected,
-      viewMode,
-      sessionMessageQuery,
-      sessionModelFilter,
-      sessionIncludePrevious,
-      activeNamedSelection,
-      viewerScroll: $("viewer").scrollTop,
-      pageScroll: window.scrollY,
-    });
+    rememberCurrentScreen();
     sessionMessageQuery="";
     sessionModelFilter="";
     sessionIncludePrevious=false;
@@ -1653,6 +1683,8 @@ const renderConversation = renderViewer;
 function openSession(id, { inheritSearch = false } = {}) {
   const inheritedQuery =
     inheritSearch && searchMode === "body" ? $("unifiedSearch").value.trim() : "";
+  if (!(viewMode === "session" && selected === id && sessionMessageQuery === inheritedQuery && !sessionModelFilter && !activeNamedSelection))
+    rememberCurrentScreen();
   selected = id;
   searchSessionId = id;
   $("searchModeSession").disabled = false;
@@ -1676,6 +1708,7 @@ function openSession(id, { inheritSearch = false } = {}) {
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function showFolders() {
+  if (viewMode !== "folders") rememberCurrentScreen();
   selected = "";
   currentFolder = "";
   bulkSelected.clear();
@@ -1684,6 +1717,7 @@ function showFolders() {
   renderViewer();
 }
 function showFolder(folder) {
+  if (viewMode !== "folder" || currentFolder !== folder) rememberCurrentScreen();
   selected = "";
   currentFolder = folder;
   bulkSelected.clear();
@@ -1865,6 +1899,7 @@ function noteItems() {
     .sort((a, b) => (b.note.updatedAt || b.note.createdAt || 0) - (a.note.updatedAt || a.note.createdAt || 0));
 }
 function showNotes() {
+  if (viewMode !== "notes") rememberCurrentScreen();
   selected = "";
   currentFolder = "";
   bulkSelected.clear();
@@ -1873,6 +1908,7 @@ function showNotes() {
   renderViewer();
 }
 function openNote(sessionId, noteId) {
+  rememberCurrentScreen();
   selected = sessionId;
   sessionMessageQuery = "";
   sessionModelFilter = "";
@@ -1896,6 +1932,7 @@ function renderNotes() {
   });
 }
 function showMemories() {
+  if (viewMode !== "memories" || currentMemoryFolder) rememberCurrentScreen();
   selected = "";
   currentFolder = "";
   currentMemoryFolder = "";
@@ -1905,6 +1942,7 @@ function showMemories() {
   renderViewer();
 }
 function showMemoryFolder(folder) {
+  if (viewMode !== "memories" || currentMemoryFolder !== folder) rememberCurrentScreen();
   selected = "";
   currentFolder = "";
   currentMemoryFolder = folder;
@@ -1914,6 +1952,7 @@ function showMemoryFolder(folder) {
   renderViewer();
 }
 function showTrash() {
+  if (viewMode !== "trash") rememberCurrentScreen();
   selected = "";
   currentFolder = "";
   bulkSelected.clear();
@@ -1942,6 +1981,7 @@ function renderTrash() {
   });
 }
 function openMemory(sessionId, memoryId) {
+  rememberCurrentScreen();
   selected = sessionId;
   sessionMessageQuery = "";
   sessionModelFilter = "";
@@ -2075,7 +2115,7 @@ function renderFolderBrowser() {
   $("viewer").scrollTop = 0;
   const memories = memoryItems(), notes = noteItems();
   $("viewer").innerHTML =
-    `<section class="archive-browser"><div class="browser-heading"><div><p class="browser-kicker">ARCHIVE</p><h2>フォルダ一覧</h2><p class="muted">フォルダを選ぶと、中のセッションを一覧できます。</p></div><span class="count-badge">${activeSessions().length} セッション</span></div><button id="openMemories" class="memory-card"><span><strong>✦ 思い出一覧</strong><small>タイトルをつけて保存した会話の範囲をまとめて見る</small></span><span class="memory-mark">${memories.length}件 ›</span></button><button id="openNotes" class="memory-card"><span><strong>✎ メモ一覧</strong><small>会話の行間へ挿入した編纂メモをまとめて見る</small></span><span class="memory-mark">${notes.length}件 ›</span></button><button id="openTrash" class="memory-card trash-card"><span><strong>♲ ゴミ箱</strong><small>最新エクスポートとの差異で退避したセッションを確認する</small></span><span class="memory-mark">${all.filter((s) => s.trashedAt).length}件 ›</span></button><div class="folder-grid">${folders.map((f) => `<button class="folder-card" data-folder="${esc(f.name)}"><span class="folder-icon">▰</span><strong>${esc(f.name)}</strong><span>${f.sessions.length} セッション</span></button>`).join("") || '<div class="empty browser-empty"><div class="moon">◐</div><h2>会話は外へ送信されません</h2><p>「ログを追加」からJSONを読み込むと、ここにフォルダが並びます。</p></div>'}</div></section>`;
+    `<section class="archive-browser home-browser"><div class="browser-heading"><div><p class="browser-kicker">ARCHIVE</p><h2>ホーム</h2><p class="muted">読みたいものを選んでください。</p></div><span class="count-badge">${activeSessions().length} セッション</span></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を開く</h3><p>セッションを保存したフォルダ</p></div></div><div class="folder-grid">${folders.map((f) => `<button class="folder-card" data-folder="${esc(f.name)}"><span class="folder-icon">▰</span><strong>${esc(f.name)}</strong><span>${f.sessions.length} セッション</span></button>`).join("") || '<div class="empty browser-empty"><div class="moon">◐</div><h2>会話は外へ送信されません</h2><p>「⚙️ 設定」→「ログを追加」からJSONを読み込むと、ここにフォルダが並びます。</p></div>'}</div></section><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">✦</span><div><h3>記録を読む</h3><p>会話から残した思い出・メモ・日記</p></div></div><div id="recordShortcuts" class="record-shortcuts"><button id="openMemories" class="record-shortcut"><span class="record-shortcut-icon">✦</span><span><strong>思い出</strong><small>保存した会話の範囲</small></span><span class="record-shortcut-count">${memories.length}件 ›</span></button><button id="openNotes" class="record-shortcut"><span class="record-shortcut-icon">✎</span><span><strong>メモ</strong><small>会話の行間の編纂メモ</small></span><span class="record-shortcut-count">${notes.length}件 ›</span></button></div></section><section class="home-section home-management"><div class="home-section-heading"><span class="home-section-icon">⚒</span><div><h3>管理</h3></div></div><button id="openTrash" class="management-shortcut"><span>♲ ゴミ箱</span><span>${all.filter((s) => s.trashedAt).length}件 ›</span></button></section></section>`;
   $("openMemories").onclick = showMemories;
   $("openNotes").onclick = showNotes;
   $("openTrash").onclick = showTrash;
@@ -2226,6 +2266,7 @@ renderViewer = function (options) {
 $("file").onchange = async (e) => {
   const files = [...e.target.files],
     failed = [];
+  const openedFromSettings = $("settings")?.open;
   let count = 0;
   for (const f of files) {
     try {
@@ -2237,6 +2278,10 @@ $("file").onchange = async (e) => {
     }
   }
   await save();
+  if (openedFromSettings) {
+    settingsReadingPosition = null;
+    $("settings").close();
+  }
   showFolders();
   rebuildFilters();
   renderList();
@@ -2255,13 +2300,21 @@ $("titleSearch").addEventListener("input", () => {
   }),
 );
 $("settingsBtn").onclick = () => {
+  settingsReadingPosition = capturePersistentReadingPosition();
   renderManagers();
   updateBackupSummary();
   $("showModelNames").checked = settings.showModelNames !== false;
   speakerIconDrafts = { user: settings.userIcon || "", assistant: settings.assistantIcon || "" };
   renderSpeakerIconSettings();
   $("settings").showModal();
+  updateBottomNavigation();
 };
+$("settings").addEventListener("close", () => {
+  const position = settingsReadingPosition;
+  settingsReadingPosition = null;
+  updateBottomNavigation();
+  restorePersistentReadingPosition(position);
+});
 $("addFolder").onclick = () => addCustom("folder");
 $("addPersona").onclick = () => addCustom("persona");
 $("newFolder").onkeydown = (e) => {
@@ -2319,7 +2372,7 @@ $("saveSettings").onclick = () => {
   save();
   rebuildFilters();
   renderList();
-  renderViewer();
+  renderViewer({ autoFocusHit: false });
 };
 $("theme").onchange = () => {
   settings.theme = $("theme").value === "dark" ? "dark" : "light";
@@ -2406,8 +2459,10 @@ $("backupFile").onchange = async (e) => {
     await load();
     selected = "";
     viewMode = "folders";
+    navigationBackStack = [];
     bulkSelected.clear();
     messageSelected.clear();
+    settingsReadingPosition = null;
     $("settings").close();
     rebuildFilters();
     renderList();
@@ -2424,6 +2479,9 @@ $("clearArchive").onclick = async () => {
     localStorage.removeItem(STORE);
     all = [];
     selected = "";
+    viewMode = "folders";
+    navigationBackStack = [];
+    settingsReadingPosition = null;
     $("settings").close();
     rebuildFilters();
     renderList();
@@ -2470,22 +2528,102 @@ addEventListener("resize", () => {
     document.body.classList.remove("desktop-header-hidden");
 });
 
+function captureNavigationState() {
+  return {
+    selected,
+    viewMode,
+    currentFolder,
+    currentMemoryFolder,
+    sessionMessageQuery,
+    sessionModelFilter,
+    sessionIncludePrevious,
+    activeNamedSelection,
+    searchMode,
+    searchSessionId,
+    unifiedSearch: $("unifiedSearch")?.value || "",
+    dlCandidateMode,
+    bulkSelected: [...bulkSelected],
+    messageSelected: [...messageSelected],
+    messageSelectionAnchor,
+    editingMemoryId,
+    sidebarOpen: matchMedia("(max-width:760px)").matches
+      ? document.body.classList.contains("sidebar-open")
+      : !document.body.classList.contains("sidebar-collapsed"),
+    sessionPanelOpen: document.body.classList.contains("session-panel-open"),
+    sidebarScroll: $("sidebar")?.scrollTop || 0,
+    sessionPanelScroll: $("sessionPanel")?.scrollTop || 0,
+    viewerScroll: $("viewer")?.scrollTop || 0,
+    pageScroll: window.scrollY,
+  };
+}
+function rememberCurrentScreen() {
+  if (!navigationReady || navigationRestoring) return;
+  navigationBackStack.push(captureNavigationState());
+  if (navigationBackStack.length > 60) navigationBackStack.shift();
+  updateBottomNavigation();
+}
 function restorePreviousScreen() {
   const previous = navigationBackStack.pop();
-  if (!previous) return false;
+  if (!previous) {
+    updateBottomNavigation();
+    return false;
+  }
+  navigationRestoring = true;
   selected = previous.selected;
   viewMode = previous.viewMode;
+  currentFolder = previous.currentFolder;
+  currentMemoryFolder = previous.currentMemoryFolder;
   sessionMessageQuery = previous.sessionMessageQuery;
   sessionModelFilter = previous.sessionModelFilter;
   sessionIncludePrevious = previous.sessionIncludePrevious;
   activeNamedSelection = previous.activeNamedSelection;
+  searchMode = previous.searchMode || "body";
+  searchSessionId = previous.searchSessionId;
+  dlCandidateMode = previous.dlCandidateMode;
+  if ($("unifiedSearch")) $("unifiedSearch").value = previous.unifiedSearch || "";
+  setSearchMode(searchMode);
+  bulkSelected = new Set(previous.bulkSelected || []);
+  messageSelected = new Set(previous.messageSelected || []);
+  messageSelectionAnchor = previous.messageSelectionAnchor || "";
+  editingMemoryId = previous.editingMemoryId || "";
   renderList();
-  renderViewer();
-  requestAnimationFrame(() => {
+  renderViewer({ autoFocusHit: false });
+  previous.sidebarOpen ? openSidebar() : closeSidebar();
+  if (previous.sessionPanelOpen && selected) {
+    renderSessionPanel();
+    document.body.classList.add("session-panel-open");
+    $("sessionPanel")?.setAttribute("aria-hidden", "false");
+    $("sessionMenuBtn")?.setAttribute("aria-expanded", "true");
+  } else {
+    document.body.classList.remove("session-panel-open");
+    $("sessionPanel")?.setAttribute("aria-hidden", "true");
+    $("sessionMenuBtn")?.setAttribute("aria-expanded", "false");
+  }
+  const restoreScroll = () => {
     $("viewer").scrollTop = previous.viewerScroll;
+    if ($("sidebar")) $("sidebar").scrollTop = previous.sidebarScroll;
+    if ($("sessionPanel")) $("sessionPanel").scrollTop = previous.sessionPanelScroll;
     window.scrollTo(0, previous.pageScroll);
-  });
+  };
+  requestAnimationFrame(() => { restoreScroll(); requestAnimationFrame(restoreScroll); });
+  navigationRestoring = false;
+  updateBottomNavigation();
   return true;
+}
+function handleBackNavigation() {
+  if ($("settings")?.open) {
+    $("settings").close();
+    return true;
+  }
+  if (document.body.classList.contains("session-panel-open")) {
+    closeSessionPanel();
+    return true;
+  }
+  if (matchMedia("(max-width:760px)").matches && document.body.classList.contains("sidebar-open")) {
+    closeSidebar();
+    return true;
+  }
+  return restorePreviousScreen();
 }
 let swipeStartX = -1, swipeStartY = 0;
 document.addEventListener("touchstart", (event) => {
@@ -2501,12 +2639,7 @@ document.addEventListener("touchend", (event) => {
     dy = Math.abs(touch.clientY - swipeStartY);
   swipeStartX = -1;
   if (dx > 90 && dy < 70 && dx > dy * 1.4) {
-    if (viewMode === "session" && selected) {
-      closeSessionPanel();
-      openSidebar();
-    } else {
-      restorePreviousScreen();
-    }
+    handleBackNavigation();
   }
 }, { passive: true });
 
@@ -2517,6 +2650,8 @@ document.addEventListener("touchend", (event) => {
   rebuildFilters();
   renderList();
   renderViewer();
+  navigationReady = true;
+  updateBottomNavigation();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
 })();
 
@@ -2937,6 +3072,7 @@ function dlSourceTime(time) {
   }).format(new Date(time * 1000));
 }
 function dlScan() {
+  if (!dlCandidateMode) rememberCurrentScreen();
   const saved = new Set(dlList().map(x => x.sessionId + "::" + x.messageId));
   const excluded = new Set(dlExcluded().map(dlSourceKey));
   const found = [];
@@ -3074,6 +3210,7 @@ function dlEditor(item, candidate) {
   d.querySelector("#dlRejectCandidate")?.addEventListener("click", async () => {
     await dlExcludeCandidate(candidate);
     d.close();
+    if (viewMode !== "diaries") rememberCurrentScreen();
     dlCandidateMode = true;
     viewMode = "diaries";
     selected = "";
@@ -3093,6 +3230,7 @@ function dlEditor(item, candidate) {
     await save();
     dlRefreshCandidateWarnings();
     d.close();
+    if (viewMode !== "diaries") rememberCurrentScreen();
     viewMode = "diaries";
     selected = "";
     renderList();
@@ -3275,22 +3413,23 @@ function dlRender() {
     dlRender();
   });
 }
-function showDiaries() { dlCandidateMode = false; viewMode = "diaries"; selected = ""; renderList(); renderViewer(); }
-const dlHeaderButton = document.createElement("button");
-dlHeaderButton.id = "headerDiaries";
-dlHeaderButton.type = "button";
-dlHeaderButton.textContent = "☾ 日記";
-document.querySelector(".header-actions")?.prepend(dlHeaderButton);
-dlHeaderButton.onclick = showDiaries;
-document.querySelector(".app-version").textContent = "v71";
+function showDiaries() {
+  if (viewMode !== "diaries" || dlCandidateMode) rememberCurrentScreen();
+  dlCandidateMode = false;
+  viewMode = "diaries";
+  selected = "";
+  renderList();
+  renderViewer();
+}
+document.querySelector(".app-version").textContent = "v72";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;
 renderFolderBrowser = function() {
   dlBaseFolders();
-  const anchor = document.querySelector("#openNotes");
+  const anchor = document.querySelector("#recordShortcuts");
   if (!anchor) return;
-  anchor.insertAdjacentHTML("afterend", '<button id="openDiaries" class="memory-card"><span><strong>☾ 登録済みの日記</strong><small>ペルソナ別・月別に日記を読む、抽出する、修正する</small></span><span class="memory-mark">' + dlList().length + '件 ›</span></button>');
+  anchor.insertAdjacentHTML("beforeend", '<button id="openDiaries" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>日記</strong><small>ペルソナ別・月別に読む</small></span><span class="record-shortcut-count">' + dlList().length + '件 ›</span></button>');
   $("openDiaries").onclick = showDiaries;
 };
 const dlBasePanel = renderSessionPanel;
@@ -3300,4 +3439,150 @@ renderSessionPanel = function() {
   if (!anchor) return;
   anchor.insertAdjacentHTML("afterend", '<button id="panelSaveDiary" class="session-panel-action wide" ' + (messageSelected.size ? "" : "disabled") + '>選択中の' + messageSelected.size + '件を日記として登録</button>');
   $("panelSaveDiary").onclick = () => { const candidate = dlSelected(); if (candidate) { closeSessionPanel(); dlEditor(null, candidate); } };
+};
+
+/* mobileNavigationV72 */
+const v72Style = document.createElement("style");
+v72Style.textContent = `
+.header-actions:empty{display:none}
+.bottom-nav{position:fixed;left:50%;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:min(620px,100%);padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);box-shadow:0 -8px 28px #2118271f;backdrop-filter:blur(16px);transform:translateX(-50%)}
+.bottom-nav-item{display:grid;place-items:center;align-content:center;gap:2px;min-width:0;min-height:51px;padding:5px 2px;border:0;border-radius:12px;background:transparent;color:var(--muted);box-shadow:none;font-weight:800}
+.bottom-nav-item:hover,.bottom-nav-item.is-active{background:var(--user);color:var(--accent)}
+.bottom-nav-item:disabled{opacity:.28;cursor:default;background:transparent}
+.bottom-nav-icon{font-size:19px;line-height:1.1}.bottom-nav-label{font-size:10px;line-height:1.15;white-space:nowrap}
+.viewer{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+.session-panel{bottom:calc(78px + env(safe-area-inset-bottom))}
+.focus-mode .bottom-nav{display:none!important}.focus-mode .viewer{padding-bottom:12px}
+.home-section{margin-top:30px}.home-section-heading{display:flex;align-items:center;gap:10px;margin:0 0 12px}.home-section-heading h3{margin:0;font-family:serif;font-size:20px}.home-section-heading p{margin:2px 0 0;color:var(--muted);font-size:12px}.home-section-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--user);color:var(--accent);font-weight:900}
+.record-shortcuts{display:grid;gap:9px}.record-shortcut{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;min-height:72px;padding:12px 14px;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--ink);text-align:left}.record-shortcut:hover{border-color:var(--accent);box-shadow:0 5px 18px #4d385110}.record-shortcut-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--user);color:var(--accent);font-size:21px}.record-shortcut strong,.record-shortcut small{display:block}.record-shortcut small{margin-top:3px;color:var(--muted);font-size:12px}.record-shortcut-count{color:var(--accent);font-size:13px;font-weight:850;white-space:nowrap}
+.home-management{padding-top:22px;border-top:1px solid var(--line)}.management-shortcut{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--muted);font-weight:750}
+#settings{width:min(640px,calc(100% - 20px));max-height:calc(100dvh - 20px);overflow:hidden}#settings form{max-height:calc(100dvh - 20px);overflow:auto}
+.settings-section{display:grid;gap:11px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}.settings-section-title{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink);font-size:15px}.settings-section>.muted{margin:0}.settings-section .manager{padding-top:10px;border-top:1px solid var(--line)}.settings-section .manager:first-of-type{padding-top:0;border-top:0}
+.settings-log-import{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:66px;padding:12px 14px;border:1px solid var(--accent);border-radius:13px;background:var(--user);color:var(--ink);cursor:pointer}.settings-log-import strong,.settings-log-import small{display:block}.settings-log-import small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.45}.settings-log-import-cta{padding:8px 10px;border-radius:9px;background:var(--accent);color:#fff;font-size:12px;font-weight:850;white-space:nowrap}
+body.dark .bottom-nav{background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent)}body.dark .bottom-nav .bottom-nav-item{background:transparent;color:var(--muted)}body.dark .bottom-nav .bottom-nav-item.is-active{background:var(--user);color:var(--accent)}body.dark .record-shortcut,body.dark .settings-section{background:var(--card)}body.dark .settings-log-import{background:var(--user)}
+@media(max-width:760px){header{padding:14px 18px}header h1{font-size:23px}.viewer{padding-bottom:calc(105px + env(safe-area-inset-bottom))}aside,body.sidebar-collapsed aside{inset:0 auto calc(66px + env(safe-area-inset-bottom)) 0}.session-panel{inset:auto 10px calc(74px + env(safe-area-inset-bottom)) 10px}.bottom-nav{border-left:0;border-right:0;border-radius:16px 16px 0 0}.folder-grid{grid-template-columns:1fr 1fr}.folder-card{min-height:112px}.home-section{margin-top:24px}}
+@media(max-width:390px){.bottom-nav-item{min-height:49px}.bottom-nav-icon{font-size:18px}.bottom-nav-label{font-size:9px}.folder-grid{grid-template-columns:1fr 1fr}.folder-card{min-height:102px;padding:13px}.settings-log-import{grid-template-columns:1fr}.settings-log-import-cta{text-align:center}}
+`;
+document.head.append(v72Style);
+
+function makeBottomNavButton(id, icon, label) {
+  const button = document.createElement("button");
+  button.id = id;
+  button.type = "button";
+  button.className = "bottom-nav-item";
+  button.innerHTML = '<span class="bottom-nav-icon" aria-hidden="true">' + icon + '</span><span class="bottom-nav-label">' + label + "</span>";
+  button.setAttribute("aria-label", label);
+  return button;
+}
+function updateBottomNavigation() {
+  const nav = $("bottomNav");
+  if (!nav) return;
+  const mobile = matchMedia("(max-width:760px)").matches;
+  const sidebarActive = mobile
+    ? document.body.classList.contains("sidebar-open")
+    : !document.body.classList.contains("sidebar-collapsed");
+  const panelActive = document.body.classList.contains("session-panel-open");
+  const settingsActive = Boolean($("settings")?.open);
+  const overlayCanClose = (mobile && sidebarActive) || panelActive || settingsActive;
+  $("bottomBackBtn").disabled = !navigationBackStack.length && !overlayCanClose;
+  $("bottomHomeBtn").classList.toggle("is-active", viewMode === "folders");
+  $("menuBtn").classList.toggle("is-active", sidebarActive);
+  $("sessionMenuBtn").classList.toggle("is-active", panelActive);
+  $("settingsBtn").classList.toggle("is-active", settingsActive);
+  $("sessionMenuBtn").disabled = !(viewMode === "session" && selected);
+  $("bottomHomeBtn").setAttribute("aria-current", viewMode === "folders" ? "page" : "false");
+}
+function setupV72Chrome() {
+  const menuButton = $("menuBtn");
+  const sessionButton = $("sessionMenuBtn");
+  const settingsButton = $("settingsBtn");
+  const backButton = makeBottomNavButton("bottomBackBtn", "←", "戻る");
+  const homeButton = makeBottomNavButton("bottomHomeBtn", "🏠", "ホーム");
+  const bottomNav = document.createElement("nav");
+  bottomNav.id = "bottomNav";
+  bottomNav.className = "bottom-nav";
+  bottomNav.setAttribute("aria-label", "主要メニュー");
+  [
+    [menuButton, "🔍", "検索"],
+    [sessionButton, "☷", "会話"],
+    [settingsButton, "⚙️", "設定"],
+  ].forEach(([button, icon, label]) => {
+    button.className = "bottom-nav-item";
+    button.innerHTML = '<span class="bottom-nav-icon" aria-hidden="true">' + icon + '</span><span class="bottom-nav-label">' + label + "</span>";
+    button.setAttribute("aria-label", label);
+    button.type = "button";
+  });
+  bottomNav.append(backButton, homeButton, menuButton, sessionButton, settingsButton);
+  document.body.insertBefore(bottomNav, $("exitFocusMode"));
+  document.querySelector(".header-actions")?.setAttribute("hidden", "");
+  backButton.onclick = handleBackNavigation;
+  homeButton.onclick = () => {
+    closeSessionPanel();
+    if (matchMedia("(max-width:760px)").matches) closeSidebar();
+    showFolders();
+  };
+
+  const form = document.querySelector("#settings form");
+  const actions = form?.querySelector(".dialog-actions");
+  if (form && actions) {
+    form.querySelector(".dialog-head h2").textContent = "設定";
+    const makeSection = (className, title) => {
+      const section = document.createElement("section");
+      section.className = "settings-section " + className;
+      const heading = document.createElement("h3");
+      heading.className = "settings-section-title";
+      heading.textContent = title;
+      section.append(heading);
+      return section;
+    };
+    const displaySection = makeSection("settings-display-section", "◐ 表示");
+    [
+      $("theme")?.closest("label"),
+      $("userName")?.closest("label"),
+      $("assistantName")?.closest("label"),
+      document.querySelector(".speaker-icon-settings"),
+      $("showModelNames")?.closest("label"),
+      $("replacements")?.closest("label"),
+    ].filter(Boolean).forEach(node => displaySection.append(node));
+
+    const organizeSection = makeSection("settings-organize-section", "▰ フォルダとペルソナ");
+    [
+      $("newFolder")?.closest(".manager"),
+      $("newPersona")?.closest(".manager"),
+      document.querySelector(".persona-hut-launch"),
+    ].filter(Boolean).forEach(node => organizeSection.append(node));
+    const managerNote = [...form.querySelectorAll(":scope > p.muted")]
+      .find(node => node.textContent.includes("追加したフォルダ"));
+    if (managerNote) organizeSection.append(managerNote);
+
+    const dataSection = makeSection("settings-data-section", "⇩ データ管理");
+    const logLabel = $("file")?.closest("label");
+    if (logLabel) {
+      const logInput = $("file");
+      const copy = document.createElement("span");
+      copy.innerHTML = "<strong>ログを追加</strong><small>conversations.jsonを既存のアーカイブへ統合します。</small>";
+      const cta = document.createElement("span");
+      cta.className = "settings-log-import-cta";
+      cta.textContent = "JSONを選ぶ";
+      logLabel.textContent = "";
+      logLabel.className = "settings-log-import";
+      logLabel.append(copy, cta, logInput);
+      dataSection.append(logLabel);
+    }
+    [form.querySelector(".sync-manager"), form.querySelector(".backup-manager")]
+      .filter(Boolean).forEach(node => dataSection.append(node));
+    actions.before(displaySection, organizeSection, dataSection);
+  }
+  updateBottomNavigation();
+}
+setupV72Chrome();
+const v72BaseViewer = renderViewer;
+renderViewer = function(options) {
+  const result = v72BaseViewer(options);
+  document.querySelectorAll(".field-note").forEach(note => {
+    if (note.textContent.includes("表示設定"))
+      note.textContent = note.textContent.replace("表示設定", "⚙️ 設定");
+  });
+  updateBottomNavigation();
+  return result;
 };

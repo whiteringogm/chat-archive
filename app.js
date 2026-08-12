@@ -1475,13 +1475,22 @@ function rebuildFilters() {
   $("searchModeSession").disabled = !selected && !searchSessionId;
 }
 function renderManagers() {
+  const managedFolders = folderOptions()
+    .map((name) => ({
+      name,
+      count: activeSessions().filter(
+        (session) => (session.folder || "未分類") === name,
+      ).length,
+      custom: settings.customFolders.includes(name),
+    }))
+    .filter((folder) => folder.count || folder.custom);
   $("folderChips").innerHTML =
-    settings.customFolders
+    managedFolders
       .map(
-        (x) =>
-          `<span class="chip">${esc(x)} <button type="button" data-folder="${esc(x)}">×</button></span>`,
+        (folder) =>
+          `<span class="chip folder-chip"><span>${esc(folder.name)}</span><small>${folder.count}件</small>${folder.custom && !folder.count ? ` <button type="button" data-remove-folder="${esc(folder.name)}" aria-label="${esc(folder.name)}を削除">×</button>` : ""}</span>`,
       )
-      .join("") || '<span class="muted">追加したフォルダはありません。</span>';
+      .join("") || '<span class="muted">フォルダはまだありません。</span>';
   $("personaChips").innerHTML =
     settings.customPersonas
       .map(
@@ -1489,11 +1498,11 @@ function renderManagers() {
           `<span class="chip">${esc(x)} <button type="button" data-persona="${esc(x)}">×</button></span>`,
       )
       .join("") || '<span class="muted">追加したペルソナはありません。</span>';
-  document.querySelectorAll("[data-folder]").forEach(
+  document.querySelectorAll("#folderChips [data-remove-folder]").forEach(
     (b) =>
       (b.onclick = () => {
         settings.customFolders = settings.customFolders.filter(
-          (x) => x !== b.dataset.folder,
+          (x) => x !== b.dataset.removeFolder,
         );
         save();
         renderManagers();
@@ -1501,7 +1510,7 @@ function renderManagers() {
         renderViewer();
       }),
   );
-  document.querySelectorAll("[data-persona]").forEach(
+  document.querySelectorAll("#personaChips [data-persona]").forEach(
     (b) =>
       (b.onclick = () => {
         settings.customPersonas = settings.customPersonas.filter(
@@ -3421,7 +3430,7 @@ function showDiaries() {
   renderList();
   renderViewer();
 }
-document.querySelector(".app-version").textContent = "v72";
+document.querySelector(".app-version").textContent = "v73";
 const dlBaseViewer = renderViewer;
 renderViewer = function(options) { return viewMode === "diaries" ? dlRender() : dlBaseViewer(options); };
 const dlBaseFolders = renderFolderBrowser;
@@ -3445,22 +3454,23 @@ renderSessionPanel = function() {
 const v72Style = document.createElement("style");
 v72Style.textContent = `
 .header-actions:empty{display:none}
-.bottom-nav{position:fixed;left:50%;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:min(620px,100%);padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);box-shadow:0 -8px 28px #2118271f;backdrop-filter:blur(16px);transform:translateX(-50%)}
+.bottom-nav{position:fixed;inset-inline:0;bottom:calc(0px - var(--bottom-nav-visual-gap,0px));z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:min(620px,100%);margin-inline:auto;padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);box-shadow:0 -8px 28px #2118271f;backdrop-filter:blur(16px)}
+.bottom-nav::after{content:"";position:absolute;top:100%;left:0;right:0;height:96px;background:var(--paper);pointer-events:none}
 .bottom-nav-item{display:grid;place-items:center;align-content:center;gap:2px;min-width:0;min-height:51px;padding:5px 2px;border:0;border-radius:12px;background:transparent;color:var(--muted);box-shadow:none;font-weight:800}
 .bottom-nav-item:hover,.bottom-nav-item.is-active{background:var(--user);color:var(--accent)}
 .bottom-nav-item:disabled{opacity:.28;cursor:default;background:transparent}
 .bottom-nav-icon{font-size:19px;line-height:1.1}.bottom-nav-label{font-size:10px;line-height:1.15;white-space:nowrap}
 .viewer{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
-.session-panel{bottom:calc(78px + env(safe-area-inset-bottom))}
+.session-panel{bottom:calc(78px + env(safe-area-inset-bottom) - var(--bottom-nav-visual-gap,0px))}
 .focus-mode .bottom-nav{display:none!important}.focus-mode .viewer{padding-bottom:12px}
 .home-section{margin-top:30px}.home-section-heading{display:flex;align-items:center;gap:10px;margin:0 0 12px}.home-section-heading h3{margin:0;font-family:serif;font-size:20px}.home-section-heading p{margin:2px 0 0;color:var(--muted);font-size:12px}.home-section-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--user);color:var(--accent);font-weight:900}
 .record-shortcuts{display:grid;gap:9px}.record-shortcut{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;min-height:72px;padding:12px 14px;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--ink);text-align:left}.record-shortcut:hover{border-color:var(--accent);box-shadow:0 5px 18px #4d385110}.record-shortcut-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--user);color:var(--accent);font-size:21px}.record-shortcut strong,.record-shortcut small{display:block}.record-shortcut small{margin-top:3px;color:var(--muted);font-size:12px}.record-shortcut-count{color:var(--accent);font-size:13px;font-weight:850;white-space:nowrap}
 .home-management{padding-top:22px;border-top:1px solid var(--line)}.management-shortcut{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--muted);font-weight:750}
 #settings{width:min(640px,calc(100% - 20px));max-height:calc(100dvh - 20px);overflow:hidden}#settings form{max-height:calc(100dvh - 20px);overflow:auto}
-.settings-section{display:grid;gap:11px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}.settings-section-title{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink);font-size:15px}.settings-section>.muted{margin:0}.settings-section .manager{padding-top:10px;border-top:1px solid var(--line)}.settings-section .manager:first-of-type{padding-top:0;border-top:0}
+.settings-section{display:grid;gap:11px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}.settings-section-title{display:flex;align-items:center;gap:8px;margin:0;color:var(--ink);font-size:15px}.settings-section>.muted{margin:0}.settings-section .manager{padding-top:10px;border-top:1px solid var(--line)}.settings-section .manager:first-of-type{padding-top:0;border-top:0}.folder-chip{display:inline-flex;align-items:center;gap:5px}.folder-chip small{color:var(--muted);font-size:10px;font-weight:750}
 .settings-log-import{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:66px;padding:12px 14px;border:1px solid var(--accent);border-radius:13px;background:var(--user);color:var(--ink);cursor:pointer}.settings-log-import strong,.settings-log-import small{display:block}.settings-log-import small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.45}.settings-log-import-cta{padding:8px 10px;border-radius:9px;background:var(--accent);color:#fff;font-size:12px;font-weight:850;white-space:nowrap}
 body.dark .bottom-nav{background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent)}body.dark .bottom-nav .bottom-nav-item{background:transparent;color:var(--muted)}body.dark .bottom-nav .bottom-nav-item.is-active{background:var(--user);color:var(--accent)}body.dark .record-shortcut,body.dark .settings-section{background:var(--card)}body.dark .settings-log-import{background:var(--user)}
-@media(max-width:760px){header{padding:14px 18px}header h1{font-size:23px}.viewer{padding-bottom:calc(105px + env(safe-area-inset-bottom))}aside,body.sidebar-collapsed aside{inset:0 auto calc(66px + env(safe-area-inset-bottom)) 0}.session-panel{inset:auto 10px calc(74px + env(safe-area-inset-bottom)) 10px}.bottom-nav{border-left:0;border-right:0;border-radius:16px 16px 0 0}.folder-grid{grid-template-columns:1fr 1fr}.folder-card{min-height:112px}.home-section{margin-top:24px}}
+@media(max-width:760px){header{padding:14px 18px}header h1{font-size:23px}.viewer{padding-bottom:calc(105px + env(safe-area-inset-bottom))}aside,body.sidebar-collapsed aside{inset:0 auto calc(66px + env(safe-area-inset-bottom) - var(--bottom-nav-visual-gap,0px)) 0}.session-panel{inset:auto 10px calc(74px + env(safe-area-inset-bottom) - var(--bottom-nav-visual-gap,0px)) 10px}.bottom-nav{border-left:0;border-right:0;border-radius:16px 16px 0 0}.folder-grid{grid-template-columns:1fr 1fr}.folder-card{min-height:112px}.home-section{margin-top:24px}}
 @media(max-width:390px){.bottom-nav-item{min-height:49px}.bottom-nav-icon{font-size:18px}.bottom-nav-label{font-size:9px}.folder-grid{grid-template-columns:1fr 1fr}.folder-card{min-height:102px;padding:13px}.settings-log-import{grid-template-columns:1fr}.settings-log-import-cta{text-align:center}}
 `;
 document.head.append(v72Style);
@@ -3491,6 +3501,43 @@ function updateBottomNavigation() {
   $("settingsBtn").classList.toggle("is-active", settingsActive);
   $("sessionMenuBtn").disabled = !(viewMode === "session" && selected);
   $("bottomHomeBtn").setAttribute("aria-current", viewMode === "folders" ? "page" : "false");
+  syncBottomNavigationViewport();
+}
+
+/* mobileNavigationV73: keep fixed controls aligned with iOS's visual viewport. */
+let bottomNavigationViewportFrame = 0;
+function syncBottomNavigationViewport() {
+  cancelAnimationFrame(bottomNavigationViewportFrame);
+  bottomNavigationViewportFrame = requestAnimationFrame(() => {
+    if (!$("bottomNav")) return;
+    const viewport = window.visualViewport;
+    const layoutHeight = window.innerHeight || document.documentElement.clientHeight;
+    const visualBottom = viewport
+      ? viewport.offsetTop + viewport.height
+      : layoutHeight;
+    const gap = Math.min(160, Math.max(0, visualBottom - layoutHeight));
+    document.documentElement.style.setProperty(
+      "--bottom-nav-visual-gap",
+      `${Math.round(gap * 100) / 100}px`,
+    );
+  });
+}
+function setupBottomNavigationViewportSync() {
+  ["resize", "scroll", "orientationchange"].forEach((eventName) =>
+    window.addEventListener(eventName, syncBottomNavigationViewport, {
+      passive: true,
+    }),
+  );
+  if (window.visualViewport) {
+    ["resize", "scroll", "scrollend"].forEach((eventName) =>
+      window.visualViewport.addEventListener(
+        eventName,
+        syncBottomNavigationViewport,
+        { passive: true },
+      ),
+    );
+  }
+  syncBottomNavigationViewport();
 }
 function setupV72Chrome() {
   const menuButton = $("menuBtn");
@@ -3551,8 +3598,7 @@ function setupV72Chrome() {
       $("newPersona")?.closest(".manager"),
       document.querySelector(".persona-hut-launch"),
     ].filter(Boolean).forEach(node => organizeSection.append(node));
-    const managerNote = [...form.querySelectorAll(":scope > p.muted")]
-      .find(node => node.textContent.includes("追加したフォルダ"));
+    const managerNote = form.querySelector(":scope > p.muted");
     if (managerNote) organizeSection.append(managerNote);
 
     const dataSection = makeSection("settings-data-section", "⇩ データ管理");
@@ -3576,6 +3622,7 @@ function setupV72Chrome() {
   updateBottomNavigation();
 }
 setupV72Chrome();
+setupBottomNavigationViewportSync();
 const v72BaseViewer = renderViewer;
 renderViewer = function(options) {
   const result = v72BaseViewer(options);

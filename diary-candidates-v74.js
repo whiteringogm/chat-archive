@@ -247,3 +247,10 @@
 
   document.querySelector(".app-version").textContent = "v74";
 })();
+
+/* Load the v75 conversation skin after all v74 enhancements are ready. */
+(() => {
+  const script = document.createElement("script");
+  script.src = "chat-ui-v75.js";
+  document.body.append(script);
+})();

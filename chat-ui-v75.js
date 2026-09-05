@@ -18,7 +18,7 @@
     --paper:#000000;
     --card:#171717;
     --line:#343434;
-    --accent:#b9b9b9;
+    --accent:#737373;
     --user:#333333;
   }
   header{background:#202020!important}

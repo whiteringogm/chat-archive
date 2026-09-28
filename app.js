@@ -2867,13 +2867,16 @@ function dlNormalizeEntry(entry) {
   const marked = entry.sourceText ? dlMarkedDiary(entry.sourceText) : null;
   const legacyDelimited = entry.sourceText && entry.extraction === "legacy-delimited" ? dlLegacyDelimitedDiary(entry.sourceText) : null;
   const legacyMention = /^legacy/.test(entry.extraction || "") ? dlEntryPersonaMention(entry) : null;
-  const profile = (marked && personaProfileFor(marked.personaId)) || legacyMention || personaProfileFor(entry.persona) || personaProfileFor(entry.personaId);
+  // Explicit editor choices take precedence over source-text inference on every read.
+  const profile = entry.personaEdited
+    ? personaProfileFor(entry.personaId) || personaProfileFor(entry.persona)
+    : (marked && personaProfileFor(marked.personaId)) || legacyMention || personaProfileFor(entry.persona) || personaProfileFor(entry.personaId);
   if (profile) {
     entry.personaId = profile.id;
     entry.persona = profile.displayName;
   } else if (!entry.personaId) entry.personaId = personaIdFor(entry.persona);
-  if (marked && entry.extraction === "emoji") entry.kind = marked.kind;
-  if (profile?.id === "persona-hika" && entry.kind === "today" && profile.diaryKind === "daily-diff") entry.kind = "daily-diff";
+  if (!entry.personaEdited && marked && entry.extraction === "emoji") entry.kind = marked.kind;
+  if (!entry.personaEdited && profile?.id === "persona-hika" && entry.kind === "today" && profile.diaryKind === "daily-diff") entry.kind = "daily-diff";
   const extracted = marked || legacyDelimited;
   if (extracted && entry.body && dlExplicit(entry.body.split("\n")[0]) !== entry.date) {
     const withoutDate = extracted.body.replace(/^.*?(?:\n|$)/, "").trim();
@@ -3230,7 +3233,7 @@ function dlEditor(item, candidate) {
     const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
     if (!body || !dateValue) return alert("記録日と本文を入力してください。");
     const persona = d.querySelector("#dlPersona").value.trim();
-    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
+    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), personaEdited: true, model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
     const duplicates = dlMatchingEntries(entry, entry.id);
     if (duplicates.length && !confirm("同じ日付・種別・ペルソナの日記が" + duplicates.length + "件登録済みです。\n\nそれでも保存しますか？")) return;
     const list = dlList(), index = list.findIndex(x => x.id === entry.id);

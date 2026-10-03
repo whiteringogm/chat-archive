@@ -16,3 +16,30 @@ ChatGPTの`conversations.json`をブラウザ内だけで読み込む、静的�
 - セッション単位のMarkdown／JSON出力
 
 ログはアップロードせず、ブラウザの端末内ストレージだけで処理します。
+
+## Notionに保管した添付へのリンク
+
+「設定」→「Notionの添付リンク」から、`seishi-asset-links`形式のJSONをファイルから読み込むか、貼り付けて追加できます。画像・ファイル本体は取り込まず、Notionの保管ページを別タブで開きます。既存の本文・分類・メモ・非表示設定は保持されます。対応する発言がない画像は、同じ会話の「元チャットから保存した添付」に表示します。会話自体がない場合は、添付だけの会話を追加します。
+
+```json
+{
+  "format": "seishi-asset-links",
+  "version": 1,
+  "assets": [{
+    "sessionId": "元の会話ID",
+    "sessionTitle": "会話名",
+    "messageId": "AIの発言ID",
+    "fileName": "image.png",
+    "notionUrl": "https://app.notion.com/p/11111111111111111111111111111111",
+    "sourceRef": "sandbox:/mnt/data/image.png",
+    "kind": "image",
+    "sourceRole": "assistant",
+    "canonical": true,
+    "verifiedAt": "2026-10-03T12:00:00Z"
+  }]
+}
+```
+
+対応表は、元のチャットかエクスポートの選択中の枝を確認して作成してください。ユーザーの添付、選ばれていない回答、期限付きのファイル直接URLは対象外です。リンク情報は完全バックアップにも含まれ、ログを追加しても残ります。新しいエクスポートで別の回答へ再生成されたことが確認できる場合、以前の回答のリンクを非表示にします。
+
+検証：`node asset-links.test.cjs`

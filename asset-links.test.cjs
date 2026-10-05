@@ -6,6 +6,27 @@ const asset = { sessionId:'s', messageId:'a', fileName:'image.png', notionUrl:ur
   sourceRef:'sandbox:/mnt/data/image.png', sourceRole:'assistant', canonical:true,
   kind:'image', verifiedAt:'2026-10-03T12:00:00Z' };
 const manifest = (assets) => ({format:api.FORMAT,version:1,assets});
+
+test('missing generated messages can retain a verified position across import and backup', () => {
+  const session={id:'s',messages:[{id:'u',role:'user',text:'generate'}, {id:'u2',role:'user',text:'nice'}],notes:[{id:'n',afterMessageId:'u',text:'keep memo'}]};
+  const positioned=api.readManifest(manifest([{...asset,anchorAfterMessageId:'u'}]));
+  const plan=api.prepareImport([session],positioned);
+  assert.equal(plan.created,0);
+  assert.equal(plan.sessions[0].externalAssets[0].anchorAfterMessageId,'u');
+  assert.deepEqual(plan.sessions[0].messages,session.messages);
+  assert.deepEqual(plan.sessions[0].notes,session.notes);
+  assert.equal(JSON.parse(JSON.stringify(plan.sessions))[0].externalAssets[0].anchorAfterMessageId,'u');
+  assert.equal(api.visibleAssets(plan.sessions[0]).length,1);
+});
+
+test('unknown or assistant anchors cannot silently attach an image to the wrong position', () => {
+  const session={id:'s',messages:[{id:'a2',role:'assistant',text:'hello'}]};
+  for(const anchorAfterMessageId of ['missing','a2']) {
+    const positioned=api.readManifest(manifest([{...asset,anchorAfterMessageId}]));
+    assert.throws(()=>api.prepareImport([session],positioned));
+    assert.equal(session.externalAssets,undefined);
+  }
+});
 test('rejects user attachments, alternative answers, and expiring download URLs', () => {
   for (const override of [{sourceRole:'user'},{canonical:false},
     {notionUrl:'https://prod-files-secure.s3.amazonaws.com/image.png'},

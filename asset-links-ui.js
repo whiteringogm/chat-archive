@@ -74,8 +74,20 @@
       node.append(cards(matches));
       matches.forEach((a) => used.add(api.keyOf(a)));
     }
+    if (!sessionMessageQuery.trim() && !sessionModelFilter) {
+      const anchored = new Map();
+      for (const asset of assets) {
+        if (used.has(api.keyOf(asset)) || !asset.anchorAfterMessageId) continue;
+        const anchor = session.messages.find((m) => m.id === asset.anchorAfterMessageId && m.role === "user" && !m.hidden);
+        const node = anchor && document.getElementById(`msg-${anchor.id}`);
+        if (!node) continue;
+        if (!anchored.has(node)) anchored.set(node, []);
+        anchored.get(node).push(asset); used.add(api.keyOf(asset));
+      }
+      for (const [node, items] of anchored) node.after(cards(items));
+    }
     const supplemental = assets.filter((a) => !used.has(api.keyOf(a)) &&
-      !session.messages.some((m) => m.id === a.messageId));
+      !used.has(api.keyOf(a)) && !session.messages.some((m) => m.id === a.messageId));
     if (supplemental.length && !sessionMessageQuery.trim() && !sessionModelFilter) {
       const block = document.createElement("section");
       block.className = "external-asset-supplement";
@@ -116,6 +128,62 @@
       $("assetMapText").value = "";
     } catch (err) { importError(err); }
     finally { button.disabled = false; }
+  };
+  const attachmentDialog = document.createElement("dialog");
+  attachmentDialog.className = "attachment-browser";
+  attachmentDialog.innerHTML = '<h2>添付一覧</h2><p class="muted">画像・ファイルはNotionで開きます。</p><label>会話名・ファイル名で検索<input type="search" class="attachment-search"></label><label>種類<select class="attachment-kind"><option value="">すべて</option><option value="image">画像</option><option value="file">ファイル</option></select></label><p class="attachment-count" role="status"></p><div class="attachment-results"></div><button type="button" class="attachment-close">閉じる</button>';
+  document.body.append(attachmentDialog);
+  const browserStyle = document.createElement("style");
+  browserStyle.textContent = '.attachment-browser{width:min(680px,calc(100vw - 24px));max-height:85dvh;overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:18px}.attachment-browser label{display:grid;gap:6px;margin:12px 0}.attachment-browser input,.attachment-browser select{width:100%;min-height:44px}.attachment-results{display:grid;gap:12px}.attachment-result{padding:12px;border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere}.attachment-result p{margin:0 0 8px}.attachment-result button,.attachment-close,.attachment-list-open{min-height:44px}.attachment-list-open{margin:8px 0;padding:10px 14px;border:1px solid var(--accent);border-radius:12px;background:var(--paper);color:var(--ink);font-weight:800}.attachment-close{position:sticky;bottom:0;width:100%;background:var(--paper);color:var(--ink)}';
+  document.head.append(browserStyle);
+  function attachmentRows() {
+    const query = attachmentDialog.querySelector("input").value.trim().toLocaleLowerCase();
+    const kind = attachmentDialog.querySelector("select").value;
+    const rows = all.filter((s) => !s.trashedAt).flatMap((session) => api.visibleAssets(session)
+      .filter((asset) => !session.messages.some((m) => m.id === asset.messageId && m.hidden))
+      .filter((asset) => !asset.anchorAfterMessageId || !session.messages.some((m) => m.id === asset.anchorAfterMessageId && m.hidden))
+      .map((asset) => ({ session, asset })))
+      .filter(({ session, asset }) => (!kind || asset.kind === kind) &&
+        (!query || `${session.title} ${asset.fileName}`.toLocaleLowerCase().includes(query)));
+    const results = attachmentDialog.querySelector(".attachment-results");
+    results.replaceChildren();
+    attachmentDialog.querySelector(".attachment-count").textContent = `${rows.length}件`;
+    for (const { session, asset } of rows) {
+      const item = document.createElement("article"); item.className = "attachment-result";
+      const title = document.createElement("p"); title.textContent = session.title;
+      const open = cards([asset]);
+      const jump = document.createElement("button"); jump.type = "button"; jump.textContent = "会話の位置へ";
+      jump.onclick = () => {
+        attachmentDialog.close(); sessionMessageQuery = ""; sessionModelFilter = "";
+        openSession(session.id);
+        requestAnimationFrame(() => {
+          const id = session.messages.some((m) => m.id === asset.messageId) ? asset.messageId : asset.anchorAfterMessageId;
+          const node = id && document.getElementById(`msg-${id}`);
+          (node || document.querySelector(".external-asset-supplement") || $("viewer"))?.scrollIntoView({ block: "center" });
+        });
+      };
+      item.append(title, open, jump); results.append(item);
+    }
+    if (!rows.length) { const empty = document.createElement("p"); empty.textContent = "該当する添付はありません。"; results.append(empty); }
+  }
+  attachmentDialog.querySelector("input").oninput = attachmentRows;
+  attachmentDialog.querySelector("select").onchange = attachmentRows;
+  attachmentDialog.querySelector(".attachment-close").onclick = () => attachmentDialog.close();
+  function attachmentEntry() {
+    const button = document.createElement("button"); button.type = "button";
+    button.className = "attachment-list-open"; button.textContent = "画像・ファイルの添付一覧";
+    button.onclick = () => { attachmentRows(); attachmentDialog.showModal(); };
+    return button;
+  }
+  section.prepend(attachmentEntry());
+  const homeButton = document.querySelector(".home-button");
+  if (homeButton) homeButton.after(attachmentEntry());
+  const viewerWithAttachments = renderViewer;
+  renderViewer = function (options) {
+    const result = viewerWithAttachments(options);
+    const conversation = document.querySelector("#viewer .conversation");
+    if (conversation) conversation.prepend(attachmentEntry());
+    return result;
   };
   summary();
 })();

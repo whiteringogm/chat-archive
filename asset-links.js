@@ -35,6 +35,7 @@
         sessionTime: Number.isFinite(raw.sessionTime) ? raw.sessionTime : 0,
         fileName: raw.fileName,
         notionUrl: notionPageUrl(raw.notionUrl),
+        anchorAfterMessageId: typeof raw.anchorAfterMessageId === "string" ? raw.anchorAfterMessageId : "",
         sourceRef: typeof raw.sourceRef === "string" ? raw.sourceRef : "",
         kind: raw.kind === "image" ? "image" : "file",
         sha256: typeof raw.sha256 === "string" ? raw.sha256 : "",
@@ -60,6 +61,8 @@
       }
       if (session.messages.some((m) => m.id === asset.messageId && m.role !== "assistant"))
         throw new Error("ユーザーの発言にはAI生成の添付を追加できません。");
+      if (asset.anchorAfterMessageId && !session.messages.some((m) => m.id === asset.anchorAfterMessageId && m.role === "user"))
+        throw new Error("添付位置に対応するユーザー発言がありません。");
       const saved = new Map((session.externalAssets || []).map((a) => [keyOf(a), a]));
       saved.set(keyOf(asset), asset);
       byId.set(session.id, { ...session, externalAssets: [...saved.values()] });

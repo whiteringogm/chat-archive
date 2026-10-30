@@ -23,12 +23,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test read-only access and archive compatibility
+        run: npm test
+      - name: Prepare public app files only
+        run: |
+          mkdir -p _site
+          cp index.html app.js style.css browser.css asset-links.js asset-links-ui.js \
+             diary-candidates-v74.js diary-cloud.js chat-ui-v75.js sw.js manifest.json icon.svg \
+             notion-images.html notion-images.css notion-images-core.mjs notion-images-ui.mjs _site/
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

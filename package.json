@@ -1,0 +1,10 @@
+{
+  "name": "seishi-chat-archive",
+  "private": true,
+  "scripts": {
+    "test": "node --test asset-links.test.cjs notion-images.test.mjs service-worker.test.cjs",
+    "test:browser": "node --test tests/browser.test.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" },
+  "engines": { "node": ">=20" }
+}

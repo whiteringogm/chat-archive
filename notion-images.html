@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#261f2d">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src https:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="notion-images.css?v=3">
+  <title>Notion画像 | 正史編纂室</title>
+  <script type="module" src="notion-images-ui.mjs?v=3"></script>
+</head>
+<body class="notion-library">
+  <header class="ni-header">
+    <div><p class="eyebrow">正史編纂室 / IMAGE LIBRARY</p><h1>Notion画像</h1><p>ページをまたいで、画像を眺める。</p></div>
+    <a href="./index.html" class="ni-back">会話アーカイブへ</a>
+  </header>
+  <main class="ni-main">
+    <section class="ni-connection" aria-labelledby="connectionTitle">
+      <div class="ni-section-head"><h2 id="connectionTitle">Notionに接続</h2><span class="ni-badge">読み取り専用</span></div>
+      <p>許可したページだけを、このブラウザで読み込む。トークン・画像・ページ名は保存せず、GitHubにも送信しない。</p>
+      <form id="ni-connect-form" autocomplete="off">
+        <label for="ni-token">インテグレーショントークン</label>
+        <div class="ni-connect-row"><input id="ni-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="ni-token-help" placeholder="読み取り専用のトークン"><button id="ni-connect" type="submit">接続して収集</button></div>
+        <p id="ni-token-help" class="ni-help">入力したトークンはこのタブのメモリ内だけに保持する。再読み込みや接続解除で消える。共有端末では利用後に接続を解除してほしい。</p>
+        <details><summary>対象ページを指定（省略するとアクセス可能なページを検索）</summary><label for="ni-roots">ページ・データベースのURLまたはID（1行に1つ）</label><textarea id="ni-roots" rows="3" spellcheck="false" placeholder="対象を絞る場合や、共有したページが検索に出ない場合に指定"></textarea><p class="ni-help">Notionの「リンクをコピー」で得たURLか、ページIDを使う。子ページとデータベース内も巡回する。</p></details>
+      </form>
+      <details class="ni-setup"><summary>初めて使うときの設定</summary><ol><li><a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener noreferrer">Notionの接続管理</a>で内部インテグレーションを作る。</li><li>「コンテンツの読み取り」だけを有効にし、更新・挿入・ユーザー情報の権限は無効にする。</li><li>対象ページの「•••」→「コネクト（接続）」から、作った接続を追加する。Web公開は不要。</li><li>接続のトークンを上の欄に入力し、「接続して収集」を押す。</li></ol><p class="ni-help">ページ数が多いと収集に時間がかかる。検索への反映が遅いページは、URLを指定して再収集できる。</p></details>
+      <div class="ni-actions"><button id="ni-rescan" type="button" disabled>再収集</button><button id="ni-stop" type="button" disabled>収集を停止</button><button id="ni-clear" type="button" disabled>一覧を消去</button><button id="ni-disconnect" type="button" disabled>接続解除・データ消去</button></div>
+      <p id="ni-status" role="status" aria-live="polite">トークンを入力すると、アクセスを許可したページの画像を収集できる。</p>
+      <p id="ni-progress" class="ni-help" role="status" aria-live="polite"></p>
+      <p id="ni-warning" class="ni-warning" role="status" hidden></p>
+    </section>
+    <section aria-labelledby="libraryTitle">
+      <div class="ni-section-head"><h2 id="libraryTitle">画像ライブラリ</h2><p id="ni-count">0枚</p></div>
+      <div class="ni-personas">
+        <label>分類に使う項目<select id="ni-group-by"><option value="">親ページの階層</option></select></label>
+        <label id="ni-parent-label">分類の親ページ<select id="ni-group-parent"><option value="">アクセス範囲の先頭</option></select></label>
+        <p class="ni-help">Notionの「ペルソナ」「分類」などの項目で切り替える。同じデータベース内の画像も分けて表示できる。親ページ単位も選べる。</p>
+        <div id="ni-groups" role="group" aria-label="ペルソナ別の画像切り替え"></div>
+      </div>
+      <div class="ni-filters">
+        <label>ページタイトルで絞り込み<input id="ni-filter" type="search" placeholder="ページ名の一部を入力" autocomplete="off"></label>
+        <label>並び順<select id="ni-sort"><option value="newest">新しい順</option><option value="oldest">古い順</option></select></label>
+        <label>表示サイズ<select id="ni-size"><option value="medium">標準</option><option value="small">小さく・列を増やす</option><option value="large">大きく・列を減らす</option></select></label>
+        <label>テーマ<select id="ni-theme"><option value="light">ライト</option><option value="dark">ダーク</option></select></label>
+      </div>
+      <label class="ni-check"><input id="ni-external" type="checkbox">外部URLの画像も読み込む</label>
+      <p class="ni-help">外部画像を有効にすると、その画像の配信元へ直接通信する。Notionトークンやページタイトルは送らない。並び順は画像ブロックの作成日時（プロパティ画像はページ作成日時）。</p>
+      <p id="ni-empty" class="ni-empty">まだ画像を収集していない。</p>
+      <div id="ni-grid" class="ni-grid ni-size-medium" aria-label="収集した画像"></div>
+      <button id="ni-more" class="ni-more" type="button" hidden>続きを表示</button>
+    </section>
+    <footer class="ni-footer">画像一覧は会話のバックアップに含まれない。端末に保存する操作は、拡大画面の「画像を保存」を押したときだけ。</footer>
+  </main>
+  <dialog id="ni-dialog" aria-labelledby="ni-dialog-title">
+    <div class="ni-dialog-head"><h2 id="ni-dialog-title">画像</h2><button id="ni-close" type="button" aria-label="拡大表示を閉じる">閉じる</button></div>
+    <img id="ni-full-image" alt="" hidden>
+    <p id="ni-dialog-status" role="status"></p>
+    <p id="ni-dialog-page"></p>
+    <div class="ni-actions"><a id="ni-open-page" target="_blank" rel="noopener noreferrer">元のNotionページ</a><button id="ni-refresh-image" type="button">画像URLを再取得</button><a id="ni-download" hidden>画像を保存</a></div>
+  </dialog>
+  <noscript>画像ライブラリを使うにはJavaScriptを有効にしてほしい。</noscript>
+</body>
+</html>

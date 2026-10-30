@@ -261,7 +261,15 @@ test('existing archive still imports, searches, persists and exports/restores a 
   const context = await browser.newContext(); t.after(() => context.close());
   const page = await context.newPage(), errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('dialog', dialog => dialog.accept());
+  let finishExport, finishRestore;
+  const exported = new Promise(resolve => finishExport = resolve);
+  const restored = new Promise(resolve => finishRestore = resolve);
+  page.on('dialog', async dialog => {
+    const message = dialog.message();
+    await dialog.accept();
+    if (message.startsWith('完全バックアップ（')) finishExport();
+    if (message === '完全バックアップから復元しました。') finishRestore();
+  });
   await page.goto(base + 'index.html');
   await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
   const conversation = [{ id: 'fixture-chat', title: '回帰テスト会話', create_time: 1700000000, current_node: 'a', mapping: {
@@ -282,6 +290,7 @@ test('existing archive still imports, searches, persists and exports/restores a 
     HTMLAnchorElement.prototype.click = function () { if (this.download) { window.fixtureBackupName = this.download; return; } return click.call(this); };
   });
   await page.locator('#exportBackup').click();
+  await exported;
   await page.waitForFunction(() => window.fixtureBackupBlob && window.fixtureBackupName);
   const generated = await page.evaluate(async () => ({ name: window.fixtureBackupName, bytes: Array.from(new Uint8Array(await window.fixtureBackupBlob.arrayBuffer())) }));
   const bytes = Buffer.from(generated.bytes);
@@ -289,7 +298,9 @@ test('existing archive still imports, searches, persists and exports/restores a 
   assert.equal(backup.sessions[0].id, 'fixture-chat');
   assert.equal(backup.sessions[0].messages[1].text, '検索対象の合言葉です');
   assert.ok(!JSON.stringify(backup).includes('fixture-token'));
+  await page.evaluate(async () => { all = []; await save(); });
   await page.locator('#backupFile').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
+  await restored;
   await page.waitForFunction(() => all.length === 1 && all[0].id === 'fixture-chat');
   await page.reload(); await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
   assert.equal(await page.evaluate(() => all[0].messages[1].text), '検索対象の合言葉です');

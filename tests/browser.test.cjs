@@ -404,6 +404,8 @@ test('persona pages open scoped memories and notes and preserve scope when retur
     all=[session('moon','まんちゃん','persona-man'),session('shadow','かげちゃん','persona-kage'),session('unclassified','未分類','persona-man')];await save();rebuildFilters();showFolders();
   });
   await page.locator('[data-persona-home="persona-man"]').click();
+  assert.equal(new URL(await page.locator('#personaNotionImages').getAttribute('href')).searchParams.get('persona'),'🌕 まんちゃん');
+  assert.equal(await page.locator('#personaNotionImages').getAttribute('target'),'_blank');
   assert.match(await page.locator('#personaReadMemories').textContent(),/1件/);assert.match(await page.locator('#personaReadNotes').textContent(),/1件/);
   await page.locator('#personaReadMemories').click();assert.equal(await page.locator('[data-memory-folder]').count(),1);assert.equal(await page.locator('[data-memory-folder]').getAttribute('data-memory-folder'),'まんちゃん');
   await page.locator('[data-memory-folder]').click();assert.match(await page.locator('#viewer').textContent(),/まんちゃんの思い出/);assert.ok(!(await page.locator('#viewer').textContent()).includes('かげちゃんの思い出'));

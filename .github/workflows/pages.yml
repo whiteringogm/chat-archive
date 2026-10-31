@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html app.js style.css browser.css asset-links.js asset-links-ui.js \
-             diary-candidates-v74.js diary-cloud.js chat-ui-v75.js sw.js manifest.json icon.svg \
+             archive-sync.mjs sync-core.mjs diary-candidates-v74.js diary-cloud.js chat-ui-v75.js sw.js manifest.json icon.svg \
              notion-images.html notion-images.css notion-images-core.mjs notion-images-ui.mjs _site/
       - name: Configure Pages
         uses: actions/configure-pages@v5

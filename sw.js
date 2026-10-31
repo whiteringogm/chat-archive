@@ -1,4 +1,4 @@
-const CACHE="seishi-v80-persona-home-1",FILES=["./","./index.html","./style.css","./browser.css","./app.js","./archive-sync.mjs","./sync-core.mjs","./diary-cloud.js","./asset-links.js","./asset-links-ui.js","./diary-candidates-v74.js","./chat-ui-v75.js","./manifest.json","./icon.svg","./notion-images.html","./notion-images.css","./notion-images-core.mjs","./notion-images-ui.mjs","./notion-images.html?v=3","./notion-images.css?v=3","./notion-images-core.mjs?v=3","./notion-images-ui.mjs?v=3"];
+const CACHE="seishi-v81-persona-records-1",FILES=["./","./index.html","./style.css","./browser.css","./app.js","./archive-sync.mjs","./sync-core.mjs","./diary-cloud.js","./asset-links.js","./asset-links-ui.js","./diary-candidates-v74.js","./chat-ui-v75.js","./manifest.json","./icon.svg","./notion-images.html","./notion-images.css","./notion-images-core.mjs","./notion-images-ui.mjs","./notion-images.html?v=3","./notion-images.css?v=3","./notion-images-core.mjs?v=3","./notion-images-ui.mjs?v=3"];
 const PUBLIC_FILES = new Set(FILES.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE)

@@ -394,3 +394,23 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   assert.equal(await page.locator('#viewer .browser-heading h2').textContent(), '締めログ');
   assert.deepEqual(outbound, []); assert.deepEqual(errors, []);
 });
+
+test('persona pages open scoped memories and notes and preserve scope when returning from source sessions', async t => {
+  const context = await browser.newContext({ serviceWorkers: 'block', viewport: {width:390,height:844} }); t.after(() => context.close());
+  const page = await context.newPage(), errors=[]; page.on('pageerror', e=>errors.push(e.message));
+  await page.goto(base+'index.html');await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);
+  await page.evaluate(async()=>{
+    const session=(id,folder,personaId)=>({id,title:folder+'会話',folder,personaId,persona:personaDisplay(personaId),time:1700000000,models:[],messages:[{id:id+'-m',role:'assistant',text:folder+'本文',time:1700000000}],namedSelections:[{id:id+'-memory',title:folder+'の思い出',messageIds:[id+'-m']}],notes:[{id:id+'-note',text:folder+'のメモ',anchorId:id+'-m',createdAt:1700000000000}]});
+    all=[session('moon','まんちゃん','persona-man'),session('shadow','かげちゃん','persona-kage'),session('unclassified','未分類','persona-man')];await save();rebuildFilters();showFolders();
+  });
+  await page.locator('[data-persona-home="persona-man"]').click();
+  assert.match(await page.locator('#personaReadMemories').textContent(),/1件/);assert.match(await page.locator('#personaReadNotes').textContent(),/1件/);
+  await page.locator('#personaReadMemories').click();assert.equal(await page.locator('[data-memory-folder]').count(),1);assert.equal(await page.locator('[data-memory-folder]').getAttribute('data-memory-folder'),'まんちゃん');
+  await page.locator('[data-memory-folder]').click();assert.match(await page.locator('#viewer').textContent(),/まんちゃんの思い出/);assert.ok(!(await page.locator('#viewer').textContent()).includes('かげちゃんの思い出'));
+  await page.locator('#backToMemories').click();assert.equal(await page.locator('[data-memory-folder]').count(),1);
+  await page.locator('#backToFolders').click();await page.locator('#personaReadNotes').click();assert.equal(await page.locator('#viewer .note-entry').count(),1);assert.match(await page.locator('#viewer .note-entry').textContent(),/まんちゃんのメモ/);
+  await page.locator('[data-open-note]').click();await page.locator('#bottomBackBtn').click();assert.equal(await page.locator('#viewer .note-entry').count(),1);
+  await page.locator('#backToFolders').click();await page.locator('#personaBackHome').click();await page.locator('[data-persona-home="persona-kage"]').click();await page.locator('#personaReadNotes').click();assert.match(await page.locator('#viewer .note-entry').textContent(),/かげちゃんのメモ/);
+  await page.locator('#backToFolders').click();await page.locator('#personaBackHome').click();await page.locator('#openNotes').click();assert.equal(await page.locator('#viewer .note-entry').count(),3);
+  assert.deepEqual(errors,[]);
+});

@@ -266,6 +266,7 @@ let all = [],
   currentFolder = "",
   currentMemoryFolder = "",
   currentPersonaHome = "",
+  recordPersonaFilter = "",
   dlPersonaFilter = "",
   diarySaveNotice = "",
   viewMode = "folders",
@@ -1738,8 +1739,23 @@ function showFolder(folder) {
   renderList();
   renderViewer();
 }
-function memoryItems() {
-  return activeSessions()
+function decoratePersonaRecordList() {
+  const profile = personaProfileFor(recordPersonaFilter), back = $("backToFolders");
+  if (back) {
+    back.textContent = profile ? profile.displayName : "ホーム";
+    back.onclick = () => profile ? showPersonaHome(profile.id) : showFolders();
+  }
+  if (profile) {
+    const description = document.querySelector("#viewer .browser-heading .muted");
+    if (description) description.textContent = profile.displayName + (viewMode === "notes" ? "のフォルダにあるメモ" : "のフォルダにある思い出");
+  }
+}
+function recordSessionMatches(session, personaId) {
+  const profile = personaProfileFor(personaId);
+  return !personaId || Boolean(profile && personaHomeFolders(profile).includes(session.folder || "未分類"));
+}
+function memoryItems(personaId = "") {
+  return activeSessions().filter(session => recordSessionMatches(session, personaId))
     .flatMap((session) =>
       (session.namedSelections || []).map((memory) => ({ session, memory })),
     )
@@ -1904,15 +1920,17 @@ function showMemoryPreview(session, memory) {
   };
   $("memoryPreview").showModal();
 }
-function noteItems() {
-  return activeSessions()
+function noteItems(personaId = "") {
+  return activeSessions().filter(session => recordSessionMatches(session, personaId))
     .flatMap((session) =>
       (session.notes || []).map((note) => ({ session, note })),
     )
     .sort((a, b) => (b.note.updatedAt || b.note.createdAt || 0) - (a.note.updatedAt || a.note.createdAt || 0));
 }
-function showNotes() {
-  if (viewMode !== "notes") rememberCurrentScreen();
+function showNotes(personaId = "") {
+  personaId = typeof personaId === "string" ? personaId : "";
+  if (viewMode !== "notes" || recordPersonaFilter !== personaId) rememberCurrentScreen();
+  recordPersonaFilter = personaId;
   selected = "";
   currentFolder = "";
   bulkSelected.clear();
@@ -1936,16 +1954,18 @@ function openNote(sessionId, noteId) {
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function renderNotes() {
-  const items = noteItems();
+  const items = noteItems(recordPersonaFilter);
   $("viewer").scrollTop = 0;
   $("viewer").innerHTML = `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><strong>メモ一覧</strong></nav><div class="browser-heading"><div><p class="browser-kicker">NOTES</p><h2>メモ一覧</h2><p class="muted">編纂室で挿入したメモをまとめて確認できます。</p></div><span class="count-badge">${items.length} 件</span></div><div class="note-list">${items.map(({ session, note }) => `<article class="note-entry"><div class="note-entry-head"><span><strong>${esc(replaceText(session.title))}</strong><small>${esc(session.folder || "未分類")} · ${esc(memoDate(note.updatedAt || note.createdAt))}</small></span><button data-open-note="${esc(note.id)}" data-session-id="${esc(session.id)}">元の位置へ</button></div><div class="markdown-body">${renderMemoText(note.text)}</div></article>`).join("") || '<div class="empty browser-empty"><div class="moon">✎</div><h2>メモはまだありません</h2><p>セッションの行間へ挿入したメモがここへ並びます。</p></div>'}</div></section>`;
-  $("backToFolders").onclick = showFolders;
+  decoratePersonaRecordList();
   document.querySelectorAll("[data-open-note]").forEach((button) => {
     button.onclick = () => openNote(button.dataset.sessionId, button.dataset.openNote);
   });
 }
-function showMemories() {
-  if (viewMode !== "memories" || currentMemoryFolder) rememberCurrentScreen();
+function showMemories(personaId = "") {
+  personaId = typeof personaId === "string" ? personaId : "";
+  if (viewMode !== "memories" || currentMemoryFolder || recordPersonaFilter !== personaId) rememberCurrentScreen();
+  recordPersonaFilter = personaId;
   selected = "";
   currentFolder = "";
   currentMemoryFolder = "";
@@ -2015,7 +2035,7 @@ function openMemory(sessionId, memoryId) {
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function renderMemories() {
-  const items = memoryItems();
+  const items = memoryItems(recordPersonaFilter);
   $("viewer").scrollTop = 0;
   if (!currentMemoryFolder) {
     const folders = [...new Set(items.map(({ session, memory }) => memoryFolder(session, memory)))]
@@ -2025,7 +2045,7 @@ function renderMemories() {
         const count = items.filter(({ session, memory }) => memoryFolder(session, memory) === folder).length;
         return `<button class="folder-card" data-memory-folder="${esc(folder)}"><span class="folder-icon">✦</span><strong>${esc(folder)}</strong><span>${count} 件の思い出</span></button>`;
       }).join("") || '<div class="empty browser-empty"><div class="moon">✦</div><h2>保存した思い出はまだありません</h2><p>セッション内で発言を選択し、「タイトルをつけて保存」するとここへ並びます。</p></div>'}</div></section>`;
-    $("backToFolders").onclick = showFolders;
+    decoratePersonaRecordList();
     document.querySelectorAll("[data-memory-folder]").forEach(
       (button) => (button.onclick = () => showMemoryFolder(button.dataset.memoryFolder)),
     );
@@ -2036,8 +2056,8 @@ function renderMemories() {
   );
   $("viewer").innerHTML =
     `<section class="archive-browser"><nav class="breadcrumbs"><button id="backToFolders">フォルダ一覧</button><span>›</span><button id="backToMemories">思い出一覧</button><span>›</span><strong>${esc(currentMemoryFolder)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">MEMORIES</p><h2>${esc(currentMemoryFolder)}の思い出</h2><p class="muted">思い出に含まれる最初の発言日時が新しい順に並びます。</p></div><span class="count-badge">${folderItems.length} 件</span></div>${folderItems.length ? '<div class="memory-folder-export"><button id="exportMemoryFolderZip">フォルダをZIP出力</button></div>' : ""}<div class="memory-list">${folderItems.map(({ session, memory }) => `<article class="memory-entry"><button class="memory-entry-main" data-open-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}"><strong class="memory-entry-title">${esc(memory.title)}${memoryDate(session, memory) ? ` <span>${esc(memoryDate(session, memory))}</span>` : ""}</strong><small class="memory-entry-meta">${esc(replaceText(session.title))} · ${memory.messageIds.length}件</small></button><div class="memory-actions"><button class="memory-preview" data-preview-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">プレビュー</button><button class="memory-json" data-json-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">JSON出力</button><button class="memory-edit" data-edit-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">内容編集</button><button class="memory-rename" data-rename-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">名前変更</button><button class="memory-delete" data-delete-memory="${esc(memory.id)}" data-session-id="${esc(session.id)}">削除</button></div></article>`).join("") || '<p class="muted">このフォルダに思い出はありません。</p>'}</div></section>`;
-  $("backToFolders").onclick = showFolders;
-  $("backToMemories").onclick = showMemories;
+  decoratePersonaRecordList();
+  $("backToMemories").onclick = () => showMemories(recordPersonaFilter);
   document
     .querySelectorAll("[data-open-memory]")
     .forEach(
@@ -2138,12 +2158,15 @@ function newPersonaDiary(id) {
   if (profile) dlEditor(null, null, profile);
 }
 function renderPersonaHome(profile) {
+  const memoryCount = memoryItems(profile.id).length, noteCount = noteItems(profile.id).length;
   const folders = personaHomeFolders(profile), diaryCount = dlList().filter(entry => entry.personaId === profile.id).length;
   $("viewer").scrollTop = 0;
-  $("viewer").innerHTML = `<section class="archive-browser persona-home"><nav class="breadcrumbs"><button id="personaBackHome">ホーム</button><span>›</span><strong>${esc(profile.displayName)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">PERSONA</p><h2>${esc(profile.displayName)}</h2><p class="muted">日記を残す、記録を読む。</p></div></div><div class="record-shortcuts"><button id="personaNewDiary" class="record-shortcut persona-register"><span class="record-shortcut-icon">＋</span><span><strong>${esc(profile.diaryLabel)}を登録</strong><small>本文を貼り付けて保存</small></span><span aria-hidden="true">›</span></button><button id="personaReadDiary" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>${esc(profile.diaryLabel)}を読む</strong><small>登録済みの日記</small></span><span class="record-shortcut-count">${diaryCount}件 ›</span></button></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を読む</h3><p>このペルソナのフォルダ</p></div></div><div class="folder-grid">${folders.map(folder => `<button class="folder-card" data-persona-folder="${esc(folder)}"><span class="folder-icon">▰</span><strong>${esc(folder)}</strong><span>${activeSessions().filter(session => (session.folder || "未分類") === folder).length} セッション</span></button>`).join("") || '<p class="muted">このペルソナのフォルダはまだありません。</p>'}</div></section></section>`;
+  $("viewer").innerHTML = `<section class="archive-browser persona-home"><nav class="breadcrumbs"><button id="personaBackHome">ホーム</button><span>›</span><strong>${esc(profile.displayName)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">PERSONA</p><h2>${esc(profile.displayName)}</h2><p class="muted">日記を残す、記録を読む。</p></div></div><div class="record-shortcuts"><button id="personaNewDiary" class="record-shortcut persona-register"><span class="record-shortcut-icon">＋</span><span><strong>${esc(profile.diaryLabel)}を登録</strong><small>本文を貼り付けて保存</small></span><span aria-hidden="true">›</span></button><button id="personaReadDiary" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>${esc(profile.diaryLabel)}を読む</strong><small>登録済みの日記</small></span><span class="record-shortcut-count">${diaryCount}件 ›</span></button><button id="personaReadMemories" class="record-shortcut"><span class="record-shortcut-icon">✦</span><span><strong>思い出を読む</strong><small>保存した会話の範囲</small></span><span class="record-shortcut-count">${memoryCount}件 ›</span></button><button id="personaReadNotes" class="record-shortcut"><span class="record-shortcut-icon">✎</span><span><strong>メモを読む</strong><small>会話の行間の編纂メモ</small></span><span class="record-shortcut-count">${noteCount}件 ›</span></button></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を読む</h3><p>このペルソナのフォルダ</p></div></div><div class="folder-grid">${folders.map(folder => `<button class="folder-card" data-persona-folder="${esc(folder)}"><span class="folder-icon">▰</span><strong>${esc(folder)}</strong><span>${activeSessions().filter(session => (session.folder || "未分類") === folder).length} セッション</span></button>`).join("") || '<p class="muted">このペルソナのフォルダはまだありません。</p>'}</div></section></section>`;
   $("personaBackHome").onclick = showFolders;
   $("personaNewDiary").onclick = () => newPersonaDiary(profile.id);
   $("personaReadDiary").onclick = () => showPersonaDiaries(profile.id);
+  $("personaReadMemories").onclick = () => showMemories(profile.id);
+  $("personaReadNotes").onclick = () => showNotes(profile.id);
   document.querySelectorAll("[data-persona-folder]").forEach(button => button.onclick = () => showFolder(button.dataset.personaFolder));
 }
 function renderFolderBrowser() {
@@ -2581,6 +2604,7 @@ function captureNavigationState() {
     currentFolder,
     currentMemoryFolder,
     currentPersonaHome,
+    recordPersonaFilter,
     dlPersonaFilter,
     sessionMessageQuery,
     sessionModelFilter,
@@ -2622,6 +2646,7 @@ function restorePreviousScreen() {
   currentFolder = previous.currentFolder;
   currentMemoryFolder = previous.currentMemoryFolder;
   currentPersonaHome = previous.currentPersonaHome || "";
+  recordPersonaFilter = previous.recordPersonaFilter || "";
   dlPersonaFilter = previous.dlPersonaFilter || "";
   sessionMessageQuery = previous.sessionMessageQuery;
   sessionModelFilter = previous.sessionModelFilter;
@@ -2707,7 +2732,7 @@ document.addEventListener("touchend", (event) => {
 
 /* memoryAnnotationsV48 */
 const maS=document.createElement("style");maS.textContent=".memory-entry{display:block!important;padding:0!important;overflow:hidden}.ma-s{display:flex;justify-content:space-between;padding:15px;cursor:pointer;list-style:none}.ma-s::-webkit-details-marker{display:none}.ma-s strong,.ma-s small{display:block}.ma-s small{margin-top:4px;color:var(--muted)}.ma-a{transition:.18s}.memory-entry[open] .ma-a{transform:rotate(180deg)}.ma-d{padding:0 15px 15px;border-top:1px solid var(--line)}.ma-c{margin-top:12px;padding:11px;background:var(--paper);border-radius:10px;white-space:pre-wrap}.ma-t,.ma-r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:9px}.ma-tag{padding:4px 8px;border:1px solid var(--accent);border-radius:999px;color:var(--accent);font-size:11px}.memory-actions{grid-template-columns:repeat(3,1fr)}.ma-open{background:var(--accent)!important;color:#fff!important}.ma-edit{border-color:var(--accent)!important;color:var(--accent)!important}.ma-dialog{width:min(620px,calc(100vw - 24px))}.ma-dialog textarea{min-height:110px}.ma-p{display:grid;gap:6px;max-height:32dvh;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:10px}.ma-o{display:grid!important;grid-template-columns:auto 1fr;gap:8px;padding:7px;background:var(--card);border-radius:8px}.ma-o input{width:18px;min-height:18px}.ma-o small{display:block;color:var(--muted)}@media(max-width:760px){.memory-actions{grid-template-columns:1fr 1fr}.ma-open{grid-column:1/-1}}";document.head.append(maS);
-const maI=()=>memoryItems(),maT=m=>Array.isArray(m.tags)?m.tags:[],maR=m=>Array.isArray(m.relatedMemoryIds)?m.relatedMemoryIds:[],maF=id=>maI().find(x=>x.memory.id===id);
+const maI=()=>memoryItems(viewMode === "memories" ? recordPersonaFilter : ""),maT=m=>Array.isArray(m.tags)?m.tags:[],maR=m=>Array.isArray(m.relatedMemoryIds)?m.relatedMemoryIds:[],maF=id=>maI().find(x=>x.memory.id===id);
 function maE(m){document.querySelector("#maDialog")?.remove();const c=new Set(maR(m)),d=document.createElement("dialog");d.id="maDialog";d.className="ma-dialog";d.innerHTML=`<form method="dialog"><div class="dialog-head"><h2>コメント・タグ・関連</h2><button value="cancel" class="icon-btn">×</button></div><label>メモ<textarea id="maC">${esc(m.comment||"")}</textarea></label><label>タグ<input id="maT" value="${esc(maT(m).join(", "))}" placeholder="カンマ・読点・改行で区切る"></label><label>関連する思い出</label><div class="ma-p">${maI().filter(x=>x.memory.id!==m.id).map(x=>`<label class="ma-o"><input type="checkbox" value="${esc(x.memory.id)}" ${c.has(x.memory.id)?"checked":""}><span><strong>${esc(x.memory.title)}</strong><small>${esc(memoryDate(x.session,x.memory)||"日付なし")} · ${esc(memoryFolder(x.session,x.memory))}</small></span></label>`).join("")||"ほかの思い出はありません。"}</div><div class="dialog-actions"><button value="cancel" class="secondary-action">キャンセル</button><button id="maSave" type="button">保存</button></div></form>`;document.body.append(d);d.addEventListener("close",()=>d.remove(),{once:true});d.querySelector("#maSave").onclick=async()=>{m.comment=d.querySelector("#maC").value.trim();m.tags=[...new Set(d.querySelector("#maT").value.split(/[、,，\n]/).map(x=>x.trim()).filter(Boolean))];m.relatedMemoryIds=[...d.querySelectorAll(".ma-o input:checked")].map(x=>x.value);await save();d.close();renderMemories()};d.showModal()}
 function maCard(s,m){const r=maR(m).map(maF).filter(Boolean);return `<details class="memory-entry"><summary class="ma-s"><span><strong>${esc(m.title)}${memoryDate(s,m)?` <small>${esc(memoryDate(s,m))}</small>`:""}</strong><small>${esc(replaceText(s.title))} · ${m.messageIds.length}件</small></span><span class="ma-a">⌄</span></summary><div class="ma-d">${m.comment?`<div class="ma-c">${esc(m.comment)}</div>`:""}${maT(m).length?`<div class="ma-t">${maT(m).map(x=>`<span class="ma-tag">#${esc(x)}</span>`).join("")}</div>`:""}${r.length?`<div class="ma-r"><small>関連：</small>${r.map(x=>`<button data-mar="${esc(x.memory.id)}">${esc(x.memory.title)}</button>`).join("")}</div>`:""}<div class="memory-actions"><button class="ma-open" data-mao="${esc(m.id)}">元の位置で見る</button><button data-map="${esc(m.id)}">プレビュー</button><button class="ma-edit" data-mae="${esc(m.id)}">コメント・タグ</button><button data-maj="${esc(m.id)}">JSON出力</button><button data-mac="${esc(m.id)}">内容編集</button><button data-man="${esc(m.id)}">名前変更</button><button class="memory-delete" data-mad="${esc(m.id)}">削除</button></div></div></details>`}
 const memoryYearStyle=document.createElement("style");

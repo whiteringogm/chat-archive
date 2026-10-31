@@ -343,4 +343,5 @@ test('app shell and library reopen offline under the Pages subdirectory', async 
   await page.goto(base + 'index.html');
   await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
   assert.equal(await page.locator('.notion-library-entry').count(), 1);
+  assert.equal(await page.locator('#deviceSync').count(), 1);
 });

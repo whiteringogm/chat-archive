@@ -265,6 +265,9 @@ let all = [],
   selected = "",
   currentFolder = "",
   currentMemoryFolder = "",
+  currentPersonaHome = "",
+  dlPersonaFilter = "",
+  diarySaveNotice = "",
   viewMode = "folders",
   sessionMessageQuery = "",
   sessionModelFilter = "",
@@ -1717,7 +1720,8 @@ function openSession(id, { inheritSearch = false } = {}) {
   if (matchMedia("(max-width:760px)").matches) closeSidebar();
 }
 function showFolders() {
-  if (viewMode !== "folders") rememberCurrentScreen();
+  if (viewMode !== "folders" || currentPersonaHome) rememberCurrentScreen();
+  currentPersonaHome = "";
   selected = "";
   currentFolder = "";
   bulkSelected.clear();
@@ -2112,7 +2116,39 @@ function renderMemories() {
       }),
   );
 }
+function personaHomeFolders(profile) {
+  return folderOptions().filter(folder => folder !== "未分類" && personaIdFor(Object.hasOwn(settings.folderPersonas, folder) ? settings.folderPersonas[folder] : folder) === profile.id);
+}
+function showPersonaHome(id) {
+  if (!personaProfileFor(id)) return;
+  if (viewMode !== "folders" || currentPersonaHome !== id) rememberCurrentScreen();
+  diarySaveNotice = "";
+  currentPersonaHome = id;
+  selected = ""; currentFolder = ""; bulkSelected.clear(); viewMode = "folders";
+  renderList(); renderViewer();
+  if (matchMedia("(max-width:760px)").matches) closeSidebar();
+}
+function showPersonaDiaries(id) {
+  if (viewMode !== "diaries" || dlPersonaFilter !== id) rememberCurrentScreen();
+  dlPersonaFilter = id; dlCandidateMode = false; selected = ""; viewMode = "diaries";
+  renderList(); renderViewer();
+}
+function newPersonaDiary(id) {
+  const profile = personaProfileFor(id);
+  if (profile) dlEditor(null, null, profile);
+}
+function renderPersonaHome(profile) {
+  const folders = personaHomeFolders(profile), diaryCount = dlList().filter(entry => entry.personaId === profile.id).length;
+  $("viewer").scrollTop = 0;
+  $("viewer").innerHTML = `<section class="archive-browser persona-home"><nav class="breadcrumbs"><button id="personaBackHome">ホーム</button><span>›</span><strong>${esc(profile.displayName)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">PERSONA</p><h2>${esc(profile.displayName)}</h2><p class="muted">日記を残す、記録を読む。</p></div></div><div class="record-shortcuts"><button id="personaNewDiary" class="record-shortcut persona-register"><span class="record-shortcut-icon">＋</span><span><strong>${esc(profile.diaryLabel)}を登録</strong><small>本文を貼り付けて保存</small></span><span aria-hidden="true">›</span></button><button id="personaReadDiary" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>${esc(profile.diaryLabel)}を読む</strong><small>登録済みの日記</small></span><span class="record-shortcut-count">${diaryCount}件 ›</span></button></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を読む</h3><p>このペルソナのフォルダ</p></div></div><div class="folder-grid">${folders.map(folder => `<button class="folder-card" data-persona-folder="${esc(folder)}"><span class="folder-icon">▰</span><strong>${esc(folder)}</strong><span>${activeSessions().filter(session => (session.folder || "未分類") === folder).length} セッション</span></button>`).join("") || '<p class="muted">このペルソナのフォルダはまだありません。</p>'}</div></section></section>`;
+  $("personaBackHome").onclick = showFolders;
+  $("personaNewDiary").onclick = () => newPersonaDiary(profile.id);
+  $("personaReadDiary").onclick = () => showPersonaDiaries(profile.id);
+  document.querySelectorAll("[data-persona-folder]").forEach(button => button.onclick = () => showFolder(button.dataset.personaFolder));
+}
 function renderFolderBrowser() {
+  const profile = personaProfileFor(currentPersonaHome);
+  if (profile) return renderPersonaHome(profile);
   const folders = folderOptions()
     .map((name) => ({
       name,
@@ -2124,7 +2160,8 @@ function renderFolderBrowser() {
   $("viewer").scrollTop = 0;
   const memories = memoryItems(), notes = noteItems();
   $("viewer").innerHTML =
-    `<section class="archive-browser home-browser"><div class="browser-heading"><div><p class="browser-kicker">ARCHIVE</p><h2>ホーム</h2><p class="muted">読みたいものを選んでください。</p></div><span class="count-badge">${activeSessions().length} セッション</span></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を開く</h3><p>セッションを保存したフォルダ</p></div></div><div class="folder-grid">${folders.map((f) => `<button class="folder-card" data-folder="${esc(f.name)}"><span class="folder-icon">▰</span><strong>${esc(f.name)}</strong><span>${f.sessions.length} セッション</span></button>`).join("") || '<div class="empty browser-empty"><div class="moon">◐</div><h2>会話は外へ送信されません</h2><p>「⚙️ 設定」→「ログを追加」からJSONを読み込むと、ここにフォルダが並びます。</p></div>'}</div></section><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">✦</span><div><h3>記録を読む</h3><p>会話から残した思い出・メモ・日記</p></div></div><div id="recordShortcuts" class="record-shortcuts"><button id="openMemories" class="record-shortcut"><span class="record-shortcut-icon">✦</span><span><strong>思い出</strong><small>保存した会話の範囲</small></span><span class="record-shortcut-count">${memories.length}件 ›</span></button><button id="openNotes" class="record-shortcut"><span class="record-shortcut-icon">✎</span><span><strong>メモ</strong><small>会話の行間の編纂メモ</small></span><span class="record-shortcut-count">${notes.length}件 ›</span></button></div></section><section class="home-section home-management"><div class="home-section-heading"><span class="home-section-icon">⚒</span><div><h3>管理</h3></div></div><button id="openTrash" class="management-shortcut"><span>♲ ゴミ箱</span><span>${all.filter((s) => s.trashedAt).length}件 ›</span></button></section></section>`;
+    `<section class="archive-browser home-browser"><div class="browser-heading"><div><p class="browser-kicker">ARCHIVE</p><h2>ホーム</h2><p class="muted">まず、ペルソナを選んでください。</p></div><span class="count-badge">${activeSessions().length} セッション</span></div><section class="home-section persona-entry"><div class="persona-grid">${personaProfiles().map(profile => `<button class="persona-card" data-persona-home="${esc(profile.id)}"><span class="persona-card-emoji" aria-hidden="true">${esc(profile.emoji || "✦")}</span><strong>${esc(profile.displayName)}</strong><small>${esc(profile.diaryLabel)}・会話</small><span class="persona-card-arrow" aria-hidden="true">›</span></button>`).join("")}</div></section><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>すべてのフォルダ</h3><p>セッションを保存したフォルダ</p></div></div><div class="folder-grid">${folders.map((f) => `<button class="folder-card" data-folder="${esc(f.name)}"><span class="folder-icon">▰</span><strong>${esc(f.name)}</strong><span>${f.sessions.length} セッション</span></button>`).join("") || '<div class="empty browser-empty"><div class="moon">◐</div><h2>会話は外へ送信されません</h2><p>「⚙️ 設定」→「ログを追加」からJSONを読み込むと、ここにフォルダが並びます。</p></div>'}</div></section><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">✦</span><div><h3>記録を読む</h3><p>会話から残した思い出・メモ・日記</p></div></div><div id="recordShortcuts" class="record-shortcuts"><button id="openMemories" class="record-shortcut"><span class="record-shortcut-icon">✦</span><span><strong>思い出</strong><small>保存した会話の範囲</small></span><span class="record-shortcut-count">${memories.length}件 ›</span></button><button id="openNotes" class="record-shortcut"><span class="record-shortcut-icon">✎</span><span><strong>メモ</strong><small>会話の行間の編纂メモ</small></span><span class="record-shortcut-count">${notes.length}件 ›</span></button></div></section><section class="home-section home-management"><div class="home-section-heading"><span class="home-section-icon">⚒</span><div><h3>管理</h3></div></div><button id="openTrash" class="management-shortcut"><span>♲ ゴミ箱</span><span>${all.filter((s) => s.trashedAt).length}件 ›</span></button></section></section>`;
+  document.querySelectorAll("[data-persona-home]").forEach(button => button.onclick = () => showPersonaHome(button.dataset.personaHome));
   $("openMemories").onclick = showMemories;
   $("openNotes").onclick = showNotes;
   $("openTrash").onclick = showTrash;
@@ -2543,6 +2580,8 @@ function captureNavigationState() {
     viewMode,
     currentFolder,
     currentMemoryFolder,
+    currentPersonaHome,
+    dlPersonaFilter,
     sessionMessageQuery,
     sessionModelFilter,
     sessionIncludePrevious,
@@ -2582,6 +2621,8 @@ function restorePreviousScreen() {
   viewMode = previous.viewMode;
   currentFolder = previous.currentFolder;
   currentMemoryFolder = previous.currentMemoryFolder;
+  currentPersonaHome = previous.currentPersonaHome || "";
+  dlPersonaFilter = previous.dlPersonaFilter || "";
   sessionMessageQuery = previous.sessionMessageQuery;
   sessionModelFilter = previous.sessionModelFilter;
   sessionIncludePrevious = previous.sessionIncludePrevious;
@@ -3188,9 +3229,9 @@ function dlSyncKindToPersona(dialog) {
   select.disabled = Boolean(profile);
   select.title = profile ? "ペルソナ管理小屋の設定に連動しています" : "";
 }
-function dlEditor(item, candidate) {
+function dlEditor(item, candidate, quickProfile = null) {
   document.querySelector("#dlEditor")?.remove();
-  const base = item || candidate || { kind: "", date: dlDate(Date.now() / 1000), body: "", persona: "", model: "" };
+  const base = item || candidate || { kind: quickProfile?.diaryKind || "", date: dlDate(Date.now() / 1000, true), body: "", persona: quickProfile?.displayName || "", personaId: quickProfile?.id || "", model: "" };
   const source = dlSource(base);
   const sourcePanel = source
     ? '<section class="dl-source"><p class="dl-source-meta">元回答の投稿日時：<strong>' + esc(dlSourceTime(source.time)) + '</strong></p><div class="dl-source-actions"><button id="dlJumpSource" type="button">元の位置で確認</button><button id="dlShowSource" type="button">回答全文を表示</button></div><div id="dlSourceFull" hidden><pre class="dl-source-full">' + esc(source.text) + '</pre><button id="dlRestoreSource" class="dl-source-restore" type="button">この全文を本文へ復元</button></div></section>'
@@ -3199,6 +3240,21 @@ function dlEditor(item, candidate) {
   d.id = "dlEditor";
   d.className = "dl-dialog";
   d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind">' + dlKindSelectOptions(base) + '</select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<select id="dlPersona">' + dlPersonaSelectOptions(base) + '</select></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions' + (candidate ? ' dl-editor-actions' : '') + '">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  if (quickProfile) {
+    d.classList.add("dl-quick-editor");
+    d.querySelector("h2").textContent = quickProfile.diaryLabel + "を登録";
+    d.querySelector(".dl-source-meta")?.remove();
+    const fields = d.querySelector(".dl-fields"), dateField = d.querySelector("#dlDate").closest("label");
+    const fixed = document.createElement("p"); fixed.className = "dl-quick-persona"; fixed.textContent = quickProfile.displayName + " ／ " + quickProfile.diaryLabel;
+    fields.before(fixed, dateField);
+    const details = document.createElement("details"); details.className = "dl-quick-details";
+    const summary = document.createElement("summary"); summary.textContent = "詳細設定";
+    details.append(summary, fields); dateField.after(details);
+    d.querySelector("#dlPersona").disabled = true;
+    d.querySelector("#dlBody").placeholder = "出力された日記を、そのまま貼り付け";
+    d.querySelector("#dlBody").setAttribute("autofocus", "");
+    const note = document.createElement("p"); note.className = "muted dl-quick-date-note"; note.textContent = "初期日付は昨日。別の日の日記は変更してください。"; dateField.after(note);
+  }
   document.body.append(d);
   d.querySelector("#dlKind").value = base.kind || diaryKindForPersona(base.personaId || base.persona);
   dlSyncKindToPersona(d);
@@ -3229,18 +3285,29 @@ function dlEditor(item, candidate) {
     renderList();
     dlRender();
   });
+  let saving = false;
   d.querySelector("#dlSave").onclick = async () => {
-    const body = d.querySelector("#dlBody").value.trim(), dateValue = d.querySelector("#dlDate").value;
-    if (!body || !dateValue) return alert("記録日と本文を入力してください。");
+    if (saving) return;
+    const body = d.querySelector("#dlBody").value, dateValue = d.querySelector("#dlDate").value;
+    if (!body.trim() || !dateValue || !d.querySelector("#dlDate").validity.valid) return alert("記録日と本文を入力してください。");
     const persona = d.querySelector("#dlPersona").value.trim();
-    const entry = { id: item?.id || "diary-" + Date.now(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), personaEdited: true, model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
+    const entry = { id: item?.id || "diary-" + crypto.randomUUID(), kind: d.querySelector("#dlKind").value, date: dateValue, body, persona, personaId: personaIdFor(persona), personaEdited: true, model: d.querySelector("#dlModel").value.trim(), sessionId: base.sessionId || null, messageId: base.messageId || null, messageIds: base.messageIds || [], sourceTime: base.sourceTime || null, sourceText: base.sourceText || (source && source.text) || "", extraction: base.extraction || "manual", updatedAt: Date.now() };
     const duplicates = dlMatchingEntries(entry, entry.id);
     if (duplicates.length && !confirm("同じ日付・種別・ペルソナの日記が" + duplicates.length + "件登録済みです。\n\nそれでも保存しますか？")) return;
+    saving = true; d.querySelector("#dlSave").disabled = true;
+    const previousEntries = dlList().slice();
     const list = dlList(), index = list.findIndex(x => x.id === entry.id);
     if (index >= 0) list[index] = entry; else list.push(entry);
     if (candidate) dlCandidates = dlCandidates.filter(x => x.id !== candidate.id);
-    await save();
+    try { await save(); } catch (error) {
+      settings.diaryEntries = previousEntries; saving = false; d.querySelector("#dlSave").disabled = false;
+      alert("保存できませんでした。本文はこの画面に残っています。端末の空き容量を確認して、もう一度保存してください。"); return;
+    }
     dlRefreshCandidateWarnings();
+    if (quickProfile) {
+      dlPersonaFilter = quickProfile.id; dlCandidateMode = false;
+      diarySaveNotice = entry.date + "の" + quickProfile.diaryLabel + "を端末に保存しました。ペルソナに読ませるにはクラウド同期してください。";
+    }
     d.close();
     if (viewMode !== "diaries") rememberCurrentScreen();
     viewMode = "diaries";
@@ -3341,18 +3408,31 @@ function dlGroupedRows(rows) {
   }).join("");
 }
 function dlRender() {
-  const rows = dlList().slice().sort(dlCompareDate);
+  const diaryProfile = personaProfileFor(dlPersonaFilter);
+  const rows = dlList().filter(entry => !diaryProfile || entry.personaId === diaryProfile.id).slice().sort(dlCompareDate);
   const candidates = '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + (dlCandidates.length ? dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + esc(diaryKindLabel(c.kind, c.personaId || c.persona)) + ' · ' + esc(personaDisplay(c.personaId || c.persona || "ペルソナ未設定")) + '</strong>' + (c.warning ? '<button type="button" class="dl-warning dl-warning-button" data-dldup="' + esc(c.id) + '">⚠ ' + esc(c.warning) + '<span>登録済みの日記を見る ›</span></button>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><div class="dl-actions"><button data-dlc="' + esc(c.id) + '">確認・登録</button><button data-dlx="' + esc(c.id) + '">これは日記じゃない</button></div></div>').join("") : "<p>新しい候補はありません。</p>") + "</section>";
   const excluded = dlExcluded();
   const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(personaDisplay(x.personaId || x.persona || "ペルソナ未設定")) + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
   const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml;
   const candidateHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY CANDIDATES</p><h2>日記の抽出候補</h2><p class="muted">確認して登録するか、候補から除外できます。</p></div><span class="count-badge">' + dlCandidates.length + ' 件</span></div><div class="dl-tools"><button id="dlReturn">← 登録済みの日記へ戻る</button></div>' + candidates;
-  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">フォルダ一覧</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
-  $("dlBack").onclick = showFolders;
-  $("dlCrumbDiary").onclick = showDiaries;
+  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">ホーム</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
+  if (diaryProfile && !dlCandidateMode) {
+    document.querySelector("#viewer .browser-heading h2").textContent = diaryProfile.diaryLabel;
+    document.querySelector("#viewer .browser-heading .muted").textContent = diaryProfile.displayName + "の日記";
+    $("dlBack").textContent = diaryProfile.displayName;
+  }
+  if (diarySaveNotice && !dlCandidateMode) {
+    const notice = document.createElement("div"); notice.className = "diary-save-notice"; notice.setAttribute("role", "status");
+    const text = document.createElement("p"); text.textContent = diarySaveNotice;
+    const sync = document.createElement("button"); sync.type = "button"; sync.textContent = "クラウド同期へ";
+    sync.onclick = () => $("deviceSync")?.click(); notice.append(text, sync);
+    document.querySelector("#viewer .browser-heading").after(notice);
+  }
+  $("dlBack").onclick = () => diaryProfile ? showPersonaHome(diaryProfile.id) : showFolders();
+  $("dlCrumbDiary").onclick = () => diaryProfile ? showPersonaDiaries(diaryProfile.id) : showDiaries();
   if ($("dlReturn")) $("dlReturn").onclick = showDiaries;
   if ($("dlScan")) $("dlScan").onclick = dlScan;
-  if ($("dlManual")) $("dlManual").onclick = () => dlEditor();
+  if ($("dlManual")) $("dlManual").onclick = () => diaryProfile ? newPersonaDiary(diaryProfile.id) : dlEditor();
   if ($("dlOpenPersonaHut")) $("dlOpenPersonaHut").onclick = openPersonaHut;
   document.querySelectorAll("[data-dl-template]").forEach(button => button.onclick = async () => {
     const profile = personaProfiles().find(item => item.id === button.dataset.dlTemplate);
@@ -3427,6 +3507,7 @@ function dlRender() {
 }
 function showDiaries() {
   if (viewMode !== "diaries" || dlCandidateMode) rememberCurrentScreen();
+  dlPersonaFilter = "";
   dlCandidateMode = false;
   viewMode = "diaries";
   selected = "";

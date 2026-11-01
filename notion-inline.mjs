@@ -115,6 +115,7 @@ renderViewer=function(options){
       else {container.append(node('small','元ログから復元した画像'));if(link.position.kind==='before')anchor.before(container);else anchor.after(container);}
       containers.set(slot,container);
     }
+    if(!url){const loadHere=node('button',failures.has(key)?'ここの画像を再試行':'ここの画像を表示');loadHere.type='button';loadHere.className='inline-image-load';loadHere.onclick=()=>{failures.delete(key);launch(session,link.position.id,'resolve',[link]);};figure.prepend(loadHere);}
     containers.get(slot).append(figure);
     // Replace the older page-link-only card, while retaining file links and metadata.
     for(const old of conversation.querySelectorAll('.external-asset-link')){

@@ -2557,46 +2557,8 @@ $("clearArchive").onclick = async () => {
     showFolders();
   }
 };
-let lastViewerScrollTop = 0,
-  headerLayoutSettlingUntil = 0;
-$("viewer").addEventListener("scroll", () => {
-  if (matchMedia("(max-width:760px)").matches) {
-    document.body.classList.remove("desktop-header-hidden");
-    lastViewerScrollTop = 0;
-    return;
-  }
-  const viewer = $("viewer"),
-    top = viewer.scrollTop,
-    now = performance.now();
-  if (now < headerLayoutSettlingUntil) {
-    lastViewerScrollTop = Math.max(0, top);
-    return;
-  }
-  const delta = top - lastViewerScrollTop;
-  if (top < 24) {
-    document.body.classList.remove("desktop-header-hidden");
-  } else if (
-    document.body.classList.contains("desktop-header-hidden") &&
-    delta < -8
-  ) {
-    document.body.classList.remove("desktop-header-hidden");
-    headerLayoutSettlingUntil = now + 280;
-  } else if (
-    !document.body.classList.contains("desktop-header-hidden") &&
-    top > 72 &&
-    delta > 8 &&
-    viewer.scrollHeight - viewer.clientHeight - top > 120
-  ) {
-    document.body.classList.add("desktop-header-hidden");
-    headerLayoutSettlingUntil = now + 280;
-  }
-  lastViewerScrollTop = Math.max(0, top);
-}, { passive: true });
-addEventListener("resize", () => {
-  if (matchMedia("(max-width:760px)").matches)
-    document.body.classList.remove("desktop-header-hidden");
-});
-
+// Keep the desktop reading pane at a stable height while scrolling.
+// Collapsing the header here used to resize the scroll container on every direction change.
 function captureNavigationState() {
   return {
     selected,

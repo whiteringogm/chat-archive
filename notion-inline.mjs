@@ -76,7 +76,7 @@ const baseViewer=renderViewer;
 renderViewer=function(options){
   const result=baseViewer(options),session=all.find(s=>s.id===selected),conversation=document.querySelector('#viewer .conversation');
   if(!session||!conversation){for(const key of images.keys())release(key);return result;}
-  const plan=sessionImageLinks(session),filtered=Boolean(sessionMessageQuery.trim()||sessionModelFilter||activeNamedSelection);
+  const plan=sessionImageLinks(session),filtered=Boolean(sessionMessageQuery.trim()||sessionModelFilter);
   const visible=plan.links.filter(link=>{
     const target=session.messages.find(m=>m.id===link.position?.id);
     return target&&!target.hidden&&document.getElementById('msg-'+target.id)&&(!filtered||link.position.kind==='message');

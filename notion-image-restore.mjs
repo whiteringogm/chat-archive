@@ -12,10 +12,12 @@ function chronologicalIds(session) {
 }
 export function restoredImageLinks(session) {
   const links=[],held=[],messages=new Map((session.messages||[]).map(m=>[m.id,m])),membership=session.canonicalMessageIds||[],order=chronologicalIds(session),seen=new Set();
-  for(const asset of session.externalAssets||[]) {
+  const assets=[...(session.externalAssets||[]).map(asset=>({asset,role:'assistant'})),...(session.userImageAssets||[]).map(asset=>({asset,role:'user'}))];
+  for(const {asset,role} of assets) {
     if(asset.kind!=='image')continue;
     const hold=reason=>held.push({fileName:asset.fileName||'画像',reason});
-    if(asset.sourceRole!=='assistant'||asset.canonical!==true){hold('確認情報なし');continue;}
+    if(asset.sourceRole!==role||asset.canonical!==true){hold('確認情報なし');continue;}
+    if(role==='user'&&!membership.includes(asset.messageId)){hold('現在の正史にない投稿画像');continue;}
     if(asset.sessionId&&asset.sessionId!==session.id){hold('会話ID不一致');continue;}
     if(!UUID.test(asset.messageId||'')){hold('発言ID不明');continue;}
     if(Array.isArray(session.canonicalMessageIds)&&!membership.includes(asset.messageId)&&Number(session.updateTime)*1000>=Date.parse(asset.verifiedAt)){hold('現在の正史から除外');continue;}
@@ -26,7 +28,7 @@ export function restoredImageLinks(session) {
     if(seen.has(id)||(session.notionImageDismissals||[]).includes(id))continue;seen.add(id);
     let position;
     const original=messages.get(asset.messageId);
-    if(original){if(original.role!=='assistant'||original.hidden){hold('元の発言が非表示またはAI出力ではない');continue;}position={kind:'message',id:original.id};}
+    if(original){if(original.role!==role||original.hidden){hold('元の発言が非表示または投稿者不一致');continue;}position={kind:'message',id:original.id};}
     else if(order?.includes(asset.messageId)){
       const index=order.indexOf(asset.messageId),previous=order.slice(0,index).reverse().find(id=>messages.has(id)),next=order.slice(index+1).find(id=>messages.has(id));
       if((previous&&messages.get(previous).hidden)||(next&&messages.get(next).hidden)){hold('前後の発言が非表示');continue;}
@@ -37,6 +39,7 @@ export function restoredImageLinks(session) {
     }
     if(!position){hold('位置を特定できない');continue;}
     const image=imageReference({pageId,pageTitle:asset.title||asset.fileName,fileName:asset.fileName,source:{kind:'page',id:pageId,sha256:asset.sha256.toLowerCase()}});
+    if(role==='user'&&Number.isInteger(asset.sequence)&&asset.sequence>=0&&asset.sequence<10000)position.index=(position.index??0)+asset.sequence/10000;
     links.push({id,messageId:asset.messageId,image,position,automatic:true});
   }
   return {links,held};

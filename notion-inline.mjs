@@ -2,6 +2,7 @@ import {restoredImageLinks} from './notion-image-restore.mjs';
 import {imageReference} from './notion-image-link.mjs';
 const LIBRARY = 'https://seishi-mcp-auth.koyamadakun.workers.dev';
 const images = new Map(), failures = new Map(), requests = new Set();
+const userImageIndex = new Map();
 const node = (tag,text) => {const out=document.createElement(tag);if(text!==undefined)out.textContent=text;return out;};
 const keyOf = (session,link) => session.id+':'+link.id+':'+(link.image?.key||'');
 const validBlob = blob => blob instanceof Blob && blob.type.startsWith('image/') && blob.size <= 25*1024*1024;
@@ -20,7 +21,7 @@ function openFull(url,name) {
 }
 function sessionImageLinks(session) {
   const manual=Array.isArray(session.notionImages)?session.notionImages:[], pages=new Set(manual.map(link=>link.image?.pageId?.replaceAll('-','')));
-  const plan=restoredImageLinks(session);
+  const plan=restoredImageLinks({...session,userImageAssets:userImageIndex.get(session.id)||session.userImageAssets||[]});
   return {links:[...manual.map(link=>({...link,position:{kind:'message',id:link.messageId}})),...plan.links.filter(link=>!pages.has(link.image.pageId.replaceAll('-','')))],held:plan.held};
 }
 function launch(session, messageId, mode, entries = []) {
@@ -36,9 +37,15 @@ function launch(session, messageId, mode, entries = []) {
     if(closed||event.origin!==LIBRARY||event.source!==popup||event.data?.nonce!==nonce)return;
     const data=event.data;
     if(data.type==='seishi-image-ready'){
-      if(mode==='resolve')popup.postMessage({type:'seishi-image-request',nonce,entries:entries.map(({id,image})=>({id,image}))},LIBRARY);
+      if(mode==='resolve')popup.postMessage({type:'seishi-image-request',nonce,sessionId:session.id,includeUserImages:true,knownImageIds:sessionImageLinks(session).links.map(link=>link.id).slice(0,10000),entries:entries.map(({id,image})=>({id,image}))},LIBRARY);
       return;
     }
+    if(data.type==='seishi-user-images-index'&&mode==='resolve'&&data.sessionId===session.id&&all.includes(session)&&!session.trashedAt&&Array.isArray(data.assets)&&data.assets.length<=10000){
+      userImageIndex.set(session.id,data.assets.filter(asset=>asset?.sessionId===session.id&&asset.sourceRole==='user').map(asset=>({...asset,canonical:true})));
+      for(const link of sessionImageLinks(session).links)if(!entries.some(row=>row.id===link.id))entries.push(link);
+      if(selected===session.id)renderViewer();
+    }
+    if(data.type==='seishi-user-images-error'&&mode==='resolve'){request.indexFailed=true;notice('投稿画像の一覧を取得できなかった。もう一度「送信画像を確認・表示」を押してほしい。');}
     if(data.type==='seishi-image-selected'&&mode==='pick'){
       queue=queue.then(async()=>{
         if(!current())return;
@@ -63,7 +70,7 @@ function launch(session, messageId, mode, entries = []) {
     if(data.type==='seishi-image-error'&&mode==='resolve'){
       const link=entries.find(link=>link.id===data.id);if(link){failures.set(keyOf(session,link),'取得できないか、保存時の原本と一致しないため保留。Notionで確認してほしい。');if(selected===session.id)renderViewer();}
     }
-    if(data.type==='seishi-image-done'&&mode==='resolve'){cleanup();popup.close();if(selected===session.id){const failed=entries.filter(link=>failures.has(keyOf(session,link))).length;notice(failed ? '画像の読み込みが終わった。'+failed+'件は取得・原本照合に失敗したため保留。各画像の「再試行」かNotionで確認できる。' : '画像の読み込みが終わった。');}}
+    if(data.type==='seishi-image-done'&&mode==='resolve'){cleanup();popup.close();if(selected===session.id){const failed=entries.filter(link=>failures.has(keyOf(session,link))).length;notice(request.indexFailed?'投稿画像の一覧取得に失敗した。もう一度「送信画像を確認・表示」を押してほしい。':failed ? '画像の読み込みが終わった。'+failed+'件は取得・原本照合に失敗したため保留。各画像の「再試行」かNotionで確認できる。' : '画像の読み込みが終わった。未表示分があれば同じボタンで続きを読み込める。');}}
   };
   window.addEventListener('message',receive);
   const watch=setInterval(()=>{if(popup.closed)cleanup();},1000);
@@ -83,7 +90,8 @@ renderViewer=function(options){
   }).sort((a,b)=>a.position.kind===b.position.kind&&a.position.id===b.position.id?(a.position.index??Infinity)-(b.position.index??Infinity):0);
   const active=new Set(visible.map(link=>keyOf(session,link)));for(const key of images.keys())if(!active.has(key))release(key);
   const unloaded=visible.filter(link=>!images.has(keyOf(session,link))&&!failures.has(keyOf(session,link)));
-  if(unloaded.length){const load=node('button','この会話の画像をまとめて表示（'+unloaded.length+'枚）');load.type='button';load.className='inline-image-load';load.onclick=()=>launch(session,unloaded[0].position.id,'resolve',unloaded.slice(0,100));conversation.querySelector('.title-row').after(load);}
+  const firstVisible=session.messages.find(message=>!message.hidden&&document.getElementById('msg-'+message.id));
+  if(firstVisible){const load=node('button',unloaded.length?'この会話の画像をまとめて表示（'+unloaded.length+'枚＋送信画像を確認）':'送信画像を確認・表示');load.type='button';load.className='inline-image-load';load.onclick=()=>launch(session,firstVisible.id,'resolve',unloaded.slice(0,100));conversation.querySelector('.title-row').after(load);}
   if(session.notionImageDismissals?.length){const undo=node('button','非表示にした復元画像を戻す（'+session.notionImageDismissals.length+'件）');undo.type='button';undo.className='inline-image-load';undo.onclick=async()=>{const previous=session.notionImageDismissals;session.notionImageDismissals=[];try{await dbSet(STORE,all);renderViewer();}catch{session.notionImageDismissals=previous;notice('表示設定を保存できなかった。');}};conversation.querySelector('.title-row').after(undo);}
   if(plan.held.length){const held=node('details');held.className='inline-image-notice';held.append(node('summary','自動復元を保留：'+plan.held.length+'件'));for(const item of plan.held)held.append(node('p',item.fileName+'：'+item.reason));conversation.querySelector('.title-row').after(held);}
   for(const message of session.messages){

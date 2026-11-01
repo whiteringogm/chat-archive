@@ -104,3 +104,15 @@ test('legacy newest-first canonical IDs restore images before the following reac
  const forward={...session,canonicalMessageIds:session.canonicalMessageIds.slice().reverse()};assert.deepEqual(restoredImageLinks(forward).links[0].position,plan.links[0].position);
  assert.equal(restoredImageLinks({...session,canonicalMessageIds:['request','answer',id,'reaction']}).links.length,0);
 });
+
+test('user images stay on the original user message and cannot enter the legacy assistant path',async()=>{
+ const {restoredImageLinks}=await import('./notion-image-restore.mjs');
+ const id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+ const asset={sessionId:'s',messageId:id,kind:'image',canonical:true,sourceRole:'user',fileName:'photo.jpg',notionUrl:'https://app.notion.com/p/'+'1'.repeat(32),sha256:'b'.repeat(64),sequence:2};
+ const session={id:'s',messages:[{id,role:'user'}],canonicalMessageIds:[id],userImageAssets:[asset]};
+ assert.equal(restoredImageLinks(session).links[0].position.id,id);
+ assert.equal(restoredImageLinks({...session,userImageAssets:[],externalAssets:[asset]}).links.length,0);
+ assert.equal(restoredImageLinks({...session,canonicalMessageIds:[]}).links.length,0);
+ assert.equal(restoredImageLinks({...session,messages:[{id,role:'assistant'}]}).links.length,0);
+ assert.equal(restoredImageLinks({...session,messages:[{id,role:'user',hidden:true}]}).links.length,0);
+});

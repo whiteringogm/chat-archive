@@ -405,6 +405,53 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   assert.deepEqual(outbound, []); assert.deepEqual(errors, []);
 });
 
+test('manual diaries link to later imports without changing text, date or model; cancel, rollback and unlink preserve the diary', async t => {
+  const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } }); t.after(() => context.close());
+  const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(base + 'index.html'); await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
+  await page.evaluate(async () => {
+    const message = (id, text, extra = {}) => ({ id, role: 'assistant', text, time: Date.parse('2026-11-01T00:10:00+09:00') / 1000, ...extra });
+    const session = (id, personaId, messages) => ({ id, title: id + '会話', folder: '未分類', personaId, persona: personaDisplay(personaId), time: 1700000000, models: [], messages, namedSelections: [], notes: [] });
+    const body = '手で整えた日記の原文♡\n行末もそのまま。\n';
+    all = [session('moon', 'persona-man', [message('wanted', '📓🌕 2026-11-02\n' + body), message('hidden', body, { hidden: true }), message('not-canonical', body)]), session('shadow', 'persona-kage', [message('other', body)]), session('far', 'persona-man', [message('far', '以前の回答', { time: 1700000000 })])];
+    all[0].canonicalMessageIds = ['wanted', 'hidden'];
+    settings.diaryEntries = [{ id: 'manual-link', date: '2026-10-31', body, model: '自分で入力したモデル', personaId: 'persona-man', persona: '🌕 まんちゃん', kind: 'closing', extraction: 'manual' }];
+    window.linkOriginal = JSON.parse(JSON.stringify(settings.diaryEntries[0]));
+    await save(); rebuildFilters(); showDiaries();
+    document.querySelectorAll('#viewer details').forEach(d => d.open = true);
+  });
+  const open = async () => { await page.evaluate(() => { showDiaries(); document.querySelectorAll('#viewer details').forEach(d => d.open = true); }); await page.locator('[data-dl-link="manual-link"]').click(); };
+  await open();
+  assert.equal(await page.locator('[data-dl-link-pick]').count(), 1);
+  await page.locator('[data-dl-link-pick]').click();
+  assert.match(await page.locator('#dlLinkText').textContent(), /原文♡/);
+  await page.locator('#dlLinkSource').getByRole('button', { name: 'キャンセル', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => settings.diaryEntries[0]), await page.evaluate(() => window.linkOriginal));
+  await open();
+  await page.locator('#dlLinkAllDates').click(); assert.equal(await page.locator('[data-dl-link-pick]').count(), 2);
+  await page.locator('#dlLinkPersona').uncheck(); await page.waitForFunction(() => document.querySelectorAll('[data-dl-link-pick]').length === 3);
+  await page.locator('#dlLinkQuery').fill('moon会話'); await page.locator('#dlLinkQuery').press('Enter');
+  assert.equal(await page.locator('[data-dl-link-pick]').count(), 1);
+  await page.locator('[data-dl-link-pick]').click();
+  await page.locator('#dlLinkSave').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(root, 'test-results/diary-source-link-mobile.png') });
+  await page.evaluate(() => { window.linkSave = save; save = async () => { throw new Error('fixture disk full'); }; });
+  await page.locator('#dlLinkSave').click(); await page.waitForFunction(() => document.querySelector('#dlLinkNotice').textContent.includes('保存できません'));
+  assert.equal(await page.evaluate(() => settings.diaryEntries[0].sessionId || null), null);
+  await page.evaluate(() => { save = window.linkSave; }); await page.locator('#dlLinkSave').click();
+  await page.waitForFunction(() => !document.querySelector('#dlLinkSource'));
+  const linked = await page.evaluate(() => settings.diaryEntries[0]);
+  assert.equal(linked.sessionId, 'moon'); assert.equal(linked.messageId, 'wanted'); assert.equal(linked.extraction, 'manual-linked');
+  for (const key of ['body', 'date', 'model', 'id', 'personaId', 'kind']) assert.equal(linked[key], await page.evaluate(k => window.linkOriginal[k], key));
+  await page.reload(); await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady && settings.diaryEntries?.[0]?.messageId === 'wanted');
+  assert.equal(await page.evaluate(() => dlSource(settings.diaryEntries[0]).message.id), 'wanted');
+  await open(); await page.locator('#dlLinkDetach').click(); await page.waitForFunction(() => !document.querySelector('#dlLinkSource'));
+  assert.equal(await page.evaluate(() => settings.diaryEntries[0].sessionId), null);
+  assert.equal(await page.evaluate(() => settings.diaryEntries[0].body), linked.body);
+  assert.equal(await page.evaluate(() => settings.diaryEntries.length), 1);
+  assert.deepEqual(errors, []);
+});
+
 test('persona pages open scoped memories and notes and preserve scope when returning from source sessions', async t => {
   const context = await browser.newContext({ serviceWorkers: 'block', viewport: {width:390,height:844} }); t.after(() => context.close());
   const page = await context.newPage(), errors=[]; page.on('pageerror', e=>errors.push(e.message));

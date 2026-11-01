@@ -2906,7 +2906,7 @@ function dlNormalizeEntry(entry) {
   if (!entry.personaEdited && marked && entry.extraction === "emoji") entry.kind = marked.kind;
   if (!entry.personaEdited && profile?.id === "persona-hika" && entry.kind === "today" && profile.diaryKind === "daily-diff") entry.kind = "daily-diff";
   const extracted = marked || legacyDelimited;
-  if (extracted && entry.body && dlExplicit(entry.body.split("\n")[0]) !== entry.date) {
+  if (entry.extraction !== "manual-linked" && extracted && entry.body && dlExplicit(entry.body.split("\n")[0]) !== entry.date) {
     const withoutDate = extracted.body.replace(/^.*?(?:\n|$)/, "").trim();
     if (entry.body.replace(/\r\n?/g, "\n").trim() === withoutDate) entry.body = extracted.body;
   }
@@ -3194,6 +3194,76 @@ function dlJump(entry) {
   renderViewer();
   requestAnimationFrame(() => jumpToMessageStable(entry.messageId));
 }
+function dlLinkSources(entry, { query = "", from = "", to = "", samePersona = true } = {}) {
+  const normalize = text => String(text || "").normalize("NFKC").replace(/20\d{2}[-/年]\d{1,2}[-/月]\d{1,2}日?/g, "").replace(/[\s#*`_-]/g, "");
+  const body = normalize(entry.body), needle = normalize(query), persona = entry.personaId || personaIdFor(entry.persona), rows = [];
+  const lower = from ? Date.parse(from + "T00:00:00+09:00") / 1000 : -Infinity;
+  const upper = to ? Date.parse(to + "T00:00:00+09:00") / 1000 + 86400 : Infinity;
+  for (const session of all) {
+    if (session.trashedAt || samePersona && persona && personaIdFor(effectivePersona(session)) !== persona) continue;
+    const canonical = session.canonicalMessageIds?.length ? new Set(session.canonicalMessageIds) : null;
+    for (const message of session.messages) {
+      if (message.role !== "assistant" || message.hidden || canonical && !canonical.has(message.id)) continue;
+      if ((from || to) && (!Number.isFinite(message.time) || message.time < lower || message.time >= upper)) continue;
+      const text = normalize(message.text);
+      if (needle && !text.includes(needle) && !normalize(session.title).includes(needle)) continue;
+      const score = body && text.includes(body) ? 3 : body.length >= 25 && text.includes(body.slice(0, 80)) ? 2 : 0;
+      rows.push({ session, message, score });
+    }
+  }
+  return rows.sort((a, b) => b.score - a.score || Math.abs((a.message.time || 0) - Date.parse(entry.date + "T12:00:00+09:00") / 1000) - Math.abs((b.message.time || 0) - Date.parse(entry.date + "T12:00:00+09:00") / 1000) || a.session.id.localeCompare(b.session.id));
+}
+function dlLinkSource(entry) {
+  document.querySelector("#dlLinkSource")?.remove();
+  const d = document.createElement("dialog"); d.id = "dlLinkSource"; d.className = "dl-dialog";
+  const shifted = days => { const date = new Date(entry.date + "T12:00:00Z"); date.setUTCDate(date.getUTCDate() + days); return Number.isNaN(+date) ? "" : date.toISOString().slice(0, 10); };
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>元ログを結びつける</h2><button value="cancel" class="icon-btn" aria-label="閉じる">×</button></div><p>' + esc(entry.date) + ' ／ ' + esc(dlEntryPersona(entry)) + '</p><p class="muted">元の回答を選んで確認してください。日記の本文・記録日・モデル名は変更しません。候補の日付は実際の投稿日時です。</p><details><summary>登録済みの日記を見る</summary><pre class="dl-source-full">' + esc(entry.body) + '</pre></details><label>本文・スレッド名で検索<input id="dlLinkQuery" type="search" placeholder="本文の一部、またはスレッド名"></label><div class="dl-fields"><label>投稿日の開始<input id="dlLinkFrom" type="date" value="' + shifted(-3) + '"></label><label>投稿日の終了<input id="dlLinkTo" type="date" value="' + shifted(3) + '"></label></div><div class="dl-source-actions"><button id="dlLinkAllDates" type="button">期間を指定しない</button><label><input id="dlLinkPersona" type="checkbox" checked>同じペルソナだけ</label></div><p id="dlLinkCount" role="status"></p><div id="dlLinkResults" class="dl-link-results"></div><button id="dlLinkMore" type="button" hidden>さらに30件表示</button><section id="dlLinkPreview" hidden><h3>選んだ元回答</h3><p id="dlLinkMeta"></p><pre id="dlLinkText" class="dl-source-full"></pre></section><p id="dlLinkNotice" role="status"></p><div class="dialog-actions"><button id="dlLinkDetach" type="button" class="secondary-action" ' + (!entry.sessionId ? 'hidden' : '') + '>紐付けを解除</button><button value="cancel" class="secondary-action">キャンセル</button><button id="dlLinkSave" type="button" disabled>この回答に結びつける</button></div></form>';
+  document.body.append(d);
+  let chosen = null, limit = 30, timer, busy = false;
+  const notice = d.querySelector("#dlLinkNotice"), commit = d.querySelector("#dlLinkSave");
+  const render = () => {
+    chosen = null; commit.disabled = true; d.querySelector("#dlLinkPreview").hidden = true; notice.textContent = "";
+    const rows = dlLinkSources(entry, { query: d.querySelector("#dlLinkQuery").value.trim(), from: d.querySelector("#dlLinkFrom").value, to: d.querySelector("#dlLinkTo").value, samePersona: d.querySelector("#dlLinkPersona").checked });
+    d.querySelector("#dlLinkCount").textContent = rows.length ? rows.length + "件の回答が見つかりました。本文が一致する候補を優先しています。" : "候補がありません。検索語・期間・ペルソナの指定を変えてください。";
+    d.querySelector("#dlLinkResults").innerHTML = rows.slice(0, limit).map((row, index) => '<button type="button" data-dl-link-pick="' + index + '"><strong>' + esc(row.session.title) + '</strong><small>' + esc(dlSourceTime(row.message.time)) + (row.score ? ' ／ 本文が似ています' : '') + '</small><span>' + esc(row.message.text.slice(0, 170)) + '</span></button>').join("");
+    d.querySelector("#dlLinkMore").hidden = rows.length <= limit;
+    d.querySelectorAll("[data-dl-link-pick]").forEach(button => button.onclick = () => {
+      chosen = rows[Number(button.dataset.dlLinkPick)]; commit.disabled = false;
+      d.querySelectorAll("[data-dl-link-pick]").forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+      d.querySelector("#dlLinkPreview").hidden = false;
+      d.querySelector("#dlLinkMeta").textContent = chosen.session.title + " ／ " + dlSourceTime(chosen.message.time);
+      d.querySelector("#dlLinkText").textContent = chosen.message.text;
+      notice.textContent = dlList().some(e => e.id !== entry.id && e.sessionId === chosen.session.id && e.messageId === chosen.message.id) ? "この回答は別の日記にも紐付いています。内容を確認してください。" : "候補を選びました。下のボタンで確定するまでは変更されません。";
+    });
+  };
+  for (const id of ["dlLinkQuery", "dlLinkFrom", "dlLinkTo", "dlLinkPersona"]) d.querySelector("#" + id).oninput = () => { clearTimeout(timer); limit = 30; chosen = null; commit.disabled = true; timer = setTimeout(render, 180); };
+  d.querySelector("#dlLinkQuery").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); clearTimeout(timer); render(); } };
+  d.querySelector("#dlLinkAllDates").onclick = () => { clearTimeout(timer); d.querySelector("#dlLinkFrom").value = ""; d.querySelector("#dlLinkTo").value = ""; limit = 30; render(); };
+  d.querySelector("#dlLinkMore").onclick = () => { limit += 30; render(); };
+  const persist = async detach => {
+    if (busy || !detach && !chosen) return;
+    const list = dlList(), index = list.findIndex(e => e.id === entry.id); if (index < 0) return;
+    const current = list[index], previous = list.slice();
+    let sourceFields = { sessionId: null, messageId: null, messageIds: [], sourceTime: null, sourceText: "", extraction: "manual" };
+    if (!detach) {
+      const session = all.find(s => s.id === chosen.session.id), message = session?.messages.find(m => m.id === chosen.message.id);
+      if (!session || session.trashedAt || !message || message.hidden || session.canonicalMessageIds?.length && !session.canonicalMessageIds.includes(message.id)) { notice.textContent = "元ログが変更されています。候補を探し直してください。"; commit.disabled = true; return; }
+      sourceFields = { sessionId: session.id, messageId: message.id, messageIds: [message.id], sourceTime: message.time || null, sourceText: message.text, extraction: "manual-linked" };
+    }
+    busy = true; d.querySelectorAll("button, input").forEach(el => el.disabled = true);
+    list[index] = { ...current, ...sourceFields, personaEdited: true, updatedAt: Date.now() };
+    try { await save(); } catch {
+      settings.diaryEntries = previous; busy = false; d.querySelectorAll("button, input").forEach(el => el.disabled = false); commit.disabled = !chosen;
+      notice.textContent = "保存できませんでした。紐付けは変更していません。もう一度保存してください。"; return;
+    }
+    diarySaveNotice = detach ? "元ログとの紐付けを解除しました。日記本文は残っています。" : "元ログに結びつけました。スマホにも反映するには端末間同期してください。";
+    dlRefreshCandidateWarnings(); d.close(); dlRender();
+  };
+  commit.onclick = () => persist(false); d.querySelector("#dlLinkDetach").onclick = () => persist(true);
+  d.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
+  d.addEventListener("close", () => { clearTimeout(timer); d.remove(); }, { once: true });
+  render(); d.showModal();
+}
 function dlPersonaSelectOptions(base) {
   const current = personaDisplay(base?.personaId || base?.persona || "");
   const options = [...new Set([...personaOptions(), ...(current && current !== "未分類" ? [current] : [])])];
@@ -3334,7 +3404,7 @@ function dlSelected() {
   return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona, personaId: personaIdFor(persona), model: assistant.model || "", sessionId: session.id, messageId: assistant.id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0, sourceText: assistant.text || "" };
 }
 function dlCard(entry) {
-  return '<article class="dl-card"><span class="dl-kind">' + esc(diaryKindLabel(entry.kind, entry.personaId || entry.persona)) + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
+  return '<article class="dl-card"><span class="dl-kind">' + esc(diaryKindLabel(entry.kind, entry.personaId || entry.persona)) + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dl-link="' + esc(entry.id) + '">' + (entry.sessionId ? '紐付けを変更' : '元ログを結びつける') + '</button><button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
 }
 function dlPayload(entries, persona, month) {
   return {
@@ -3477,6 +3547,7 @@ function dlRender() {
     dlScan();
   });
   document.querySelectorAll("[data-dlj]").forEach(b => b.onclick = () => dlJump(dlList().find(x => x.id === b.dataset.dlj)));
+  document.querySelectorAll("[data-dl-link]").forEach(b => b.onclick = () => dlLinkSource(dlList().find(x => x.id === b.dataset.dlLink)));
   document.querySelectorAll("[data-dle]").forEach(b => b.onclick = () => dlEditor(dlList().find(x => x.id === b.dataset.dle)));
   const grouped = new Map();
   rows.forEach(entry => {

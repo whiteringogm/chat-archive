@@ -8,3 +8,5 @@
 @media(max-width:760px){.persona-grid{grid-template-columns:1fr}.persona-card{min-height:92px;padding:16px}.persona-card-emoji{font-size:28px}.dl-quick-editor #dlBody{min-height:210px}.dl-quick-editor .dialog-head h2{font-size:22px}}
 
 .persona-home a.record-shortcut{text-decoration:none}
+
+.dl-link-results{display:grid;gap:8px;max-height:340px;overflow:auto;margin:12px 0}.dl-link-results button{display:grid;gap:5px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}.dl-link-results button[aria-pressed="true"]{outline:2px solid var(--accent)}.dl-link-results small{color:var(--muted)}.dl-link-results span{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}#dlLinkSource input[type="checkbox"]{width:auto}#dlLinkSource .dialog-actions{flex-wrap:wrap}

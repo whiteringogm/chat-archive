@@ -468,13 +468,15 @@ test('existing correspondence restores missing image messages together, preserve
  await page.evaluate(async()=>{
   const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',c='cccccccc-cccc-cccc-cccc-cccccccccccc';
   const asset=(id,p)=>({sessionId:'restore',messageId:id,kind:'image',fileName:p+'.png',notionUrl:'https://app.notion.com/p/'+p.repeat(32),sourceRef:id,sha256:'a'.repeat(64),canonical:true,sourceRole:'assistant',verifiedAt:'2026-01-01T00:00:00Z'});
-  all=[{id:'restore',title:'自動復元の試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'u',role:'user',text:'元の依頼',time:1700000000},{id:'last',role:'assistant',text:'その後の会話',time:1700000001}],canonicalMessageIds:['u',a,b,'last'],externalAssets:[asset(b,'2'),asset(a,'1'),{...asset(c,'3'),canonical:undefined}],notes:[],namedSelections:[]}];await save();rebuildFilters();openSession('restore');
+  all=[{id:'restore',title:'自動復元の試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'u',role:'user',text:'元の依頼',time:1700000000},{id:'last',role:'assistant',text:'その後の会話',time:1700000001}],canonicalMessageIds:['last',b,a,'u'],externalAssets:[asset(b,'2'),asset(a,'1'),{...asset(c,'3'),canonical:undefined}],notes:[],namedSelections:[]}];await save();rebuildFilters();openSession('restore');
  });
  assert.equal(await page.locator('[data-position="after:u"] .inline-notion-image').count(),2);
  assert.deepEqual(await page.locator('[data-position="after:u"] figcaption').allTextContents(),['1.png ／ 1.png','2.png ／ 2.png']);
  assert.match(await page.locator('#viewer').textContent(),/自動復元を保留：1件/);
  assert.equal(await page.evaluate(()=>all[0].messages.length),2);assert.equal(await page.evaluate(()=>all[0].notionImages),undefined);
- await page.getByRole('button',{name:'この会話の画像をまとめて表示（2枚）',exact:true}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.inline-notion-image img')].filter(img=>img.naturalWidth>0).length===2);
+ assert.equal(await page.locator('#msg-u').evaluate(el=>el.nextElementSibling.dataset.position),'after:u');
+ await page.getByRole('button',{name:'ここの画像を表示',exact:true}).first().click();await page.waitForFunction(()=>document.querySelector('.inline-notion-image img')?.naturalWidth>0);
+ await page.getByRole('button',{name:'この会話の画像をまとめて表示（1枚）',exact:true}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.inline-notion-image img')].filter(img=>img.naturalWidth>0).length===2);
  await page.getByRole('button',{name:'この画像を非表示',exact:true}).first().click();await page.waitForFunction(()=>document.querySelectorAll('.inline-notion-image').length===1);
  await page.reload();await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);await page.evaluate(()=>openSession('restore'));assert.equal(await page.locator('.inline-notion-image').count(),1);
  await page.evaluate(async()=>{merge([{...all[0],notionImageDismissals:undefined}]);await save();renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),1);

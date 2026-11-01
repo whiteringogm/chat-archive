@@ -93,3 +93,14 @@ test('automatic image placement uses verified messages, anchors and canonical or
  assert.equal(restoredImageLinks({...session,externalAssets:[asset(aid,'1'),asset(aid,'1')]}).links.length,1);
  assert.equal(restoredImageLinks({...session,externalAssets:[{...asset(aid,'1'),notionUrl:'https://evil.test/'+ '1'.repeat(32)}]}).links.length,0);
 });
+
+
+test('legacy newest-first canonical IDs restore images before the following reaction, without altering source order',async()=>{
+ const {restoredImageLinks}=await import('./notion-image-restore.mjs');
+ const id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+ const session={id:'s',messages:[{id:'request',role:'user'},{id:'reaction',role:'user'},{id:'answer',role:'assistant'}],canonicalMessageIds:['answer','reaction',id,'request'],externalAssets:[{sessionId:'s',messageId:id,kind:'image',canonical:true,sourceRole:'assistant',fileName:'first.png',notionUrl:'https://app.notion.com/p/'+'1'.repeat(32),sha256:'a'.repeat(64),verifiedAt:'2026-01-01T00:00:00Z'}]};
+ const before=JSON.stringify(session.canonicalMessageIds),plan=restoredImageLinks(session);
+ assert.equal(plan.links.length,1);assert.deepEqual(plan.links[0].position,{kind:'after',id:'request',index:1});assert.equal(JSON.stringify(session.canonicalMessageIds),before);
+ const forward={...session,canonicalMessageIds:session.canonicalMessageIds.slice().reverse()};assert.deepEqual(restoredImageLinks(forward).links[0].position,plan.links[0].position);
+ assert.equal(restoredImageLinks({...session,canonicalMessageIds:['request','answer',id,'reaction']}).links.length,0);
+});

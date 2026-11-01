@@ -452,10 +452,32 @@ test('inline Notion images bind to a message, persist only stable references and
   await page.screenshot({path:path.join(root,'test-results/inline-notion-mobile.png'),fullPage:true});
   await picker.close();await page.reload();await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);await page.evaluate(()=>openSession('inline-chat'));
   assert.equal(await page.locator('.inline-notion-image img').count(),0);
-  const resolveEvent=page.waitForEvent('popup');await page.getByRole('button',{name:'Notion画像を表示（1枚）',exact:true}).click();const resolver=await resolveEvent;
+  const resolveEvent=page.waitForEvent('popup');await page.getByRole('button',{name:'この会話の画像をまとめて表示（1枚）',exact:true}).click();const resolver=await resolveEvent;
   assert.equal(new URL(resolver.url()).searchParams.get('imageBridge'),'resolve');
   await page.waitForFunction(()=>document.querySelector('.inline-notion-image img')?.naturalWidth>0);
   await page.evaluate(async()=>{merge([{...all[0],notionImages:undefined}]);await save();renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),1);
   await page.getByRole('button',{name:'紐付けを解除',exact:true}).click();await page.locator('.inline-notion-image').waitFor({state:'detached'});assert.equal(await page.evaluate(()=>all[0].notionImages.length),0);
   assert.deepEqual(errors,[]);
+});
+
+test('existing correspondence restores missing image messages together, preserves canonical order and holds unverified links',async t=>{
+ const context=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});t.after(()=>context.close());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const library='https://seishi-mcp-auth.koyamadakun.workers.dev';
+ await context.route(library+'/**',async route=>route.fulfill({contentType:'text/html',body:`<script>const q=new URL(location.href).searchParams,nonce=q.get('handoff'),from=q.get('from');addEventListener('message',e=>{if(e.origin!==from||e.source!==opener||e.data.nonce!==nonce)return;for(const row of e.data.entries){const blob=new Blob([Uint8Array.from(atob('${png.toString('base64')}'),x=>x.charCodeAt(0))],{type:'image/png'});opener.postMessage({type:'seishi-image-loaded',nonce,id:row.id,image:row.image,blob},from);}opener.postMessage({type:'seishi-image-done',nonce},from);});opener.postMessage({type:'seishi-image-ready',nonce},from);</script>`}));
+ await page.goto(base+'index.html');await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);
+ await page.evaluate(async()=>{
+  const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',c='cccccccc-cccc-cccc-cccc-cccccccccccc';
+  const asset=(id,p)=>({sessionId:'restore',messageId:id,kind:'image',fileName:p+'.png',notionUrl:'https://app.notion.com/p/'+p.repeat(32),sourceRef:id,sha256:'a'.repeat(64),canonical:true,sourceRole:'assistant',verifiedAt:'2026-01-01T00:00:00Z'});
+  all=[{id:'restore',title:'自動復元の試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'u',role:'user',text:'元の依頼',time:1700000000},{id:'last',role:'assistant',text:'その後の会話',time:1700000001}],canonicalMessageIds:['u',a,b,'last'],externalAssets:[asset(b,'2'),asset(a,'1'),{...asset(c,'3'),canonical:undefined}],notes:[],namedSelections:[]}];await save();rebuildFilters();openSession('restore');
+ });
+ assert.equal(await page.locator('[data-position="after:u"] .inline-notion-image').count(),2);
+ assert.deepEqual(await page.locator('[data-position="after:u"] figcaption').allTextContents(),['1.png ／ 1.png','2.png ／ 2.png']);
+ assert.match(await page.locator('#viewer').textContent(),/自動復元を保留：1件/);
+ assert.equal(await page.evaluate(()=>all[0].messages.length),2);assert.equal(await page.evaluate(()=>all[0].notionImages),undefined);
+ await page.getByRole('button',{name:'この会話の画像をまとめて表示（2枚）',exact:true}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.inline-notion-image img')].filter(img=>img.naturalWidth>0).length===2);
+ await page.getByRole('button',{name:'この画像を非表示',exact:true}).first().click();await page.waitForFunction(()=>document.querySelectorAll('.inline-notion-image').length===1);
+ await page.reload();await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);await page.evaluate(()=>openSession('restore'));assert.equal(await page.locator('.inline-notion-image').count(),1);
+ await page.evaluate(async()=>{merge([{...all[0],notionImageDismissals:undefined}]);await save();renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),1);
+ await page.evaluate(()=>{all[0].messages[0].hidden=true;renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),0);
+ assert.deepEqual(errors,[]);
 });

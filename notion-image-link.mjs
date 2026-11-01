@@ -7,8 +7,9 @@ export function imageReference(value) {
   if (raw?.kind === 'block' && UUID.test(raw.id || '')) source = {kind:'block', id:raw.id};
   else if (raw?.kind === 'property' && raw.pageId === value.pageId && text(raw.propertyId,200) && typeof raw.name === 'string' && raw.name.length <= 1000 && Number.isInteger(raw.occurrence) && raw.occurrence >= 0 && raw.occurrence < 10000)
     source = {kind:'property',pageId:raw.pageId,propertyId:raw.propertyId,name:raw.name,occurrence:raw.occurrence};
+  else if (raw?.kind === 'page' && raw.id === value.pageId && /^[a-f0-9]{64}$/i.test(raw.sha256 || '')) source = {kind:'page',id:raw.id,sha256:raw.sha256.toLowerCase()};
   else throw new Error('画像の参照先を確認できない。');
-  return {key:source.kind === 'block' ? 'block:'+source.id : 'property:'+JSON.stringify(source),pageId:value.pageId,pageUrl:'https://app.notion.com/p/'+value.pageId.replaceAll('-',''),pageTitle:text(value.pageTitle,1000)||'Notion画像',fileName:text(value.fileName,1000)||'画像',source};
+  return {key:source.kind === 'block' ? 'block:'+source.id : source.kind === 'page' ? 'page:'+source.id+':'+source.sha256 : 'property:'+JSON.stringify(source),pageId:value.pageId,pageUrl:'https://app.notion.com/p/'+value.pageId.replaceAll('-',''),pageTitle:text(value.pageTitle,1000)||'Notion画像',fileName:text(value.fileName,1000)||'画像',source};
 }
 export function bridgeContext(value) {
   const url = new URL(value), from = url.searchParams.get('from'), nonce = url.searchParams.get('handoff'), mode = url.searchParams.get('imageBridge');

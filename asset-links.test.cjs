@@ -66,3 +66,14 @@ test('new attachment-only sessions survive backup JSON round trips', () => {
   assert.equal(plan.sessions[0].assetOnly,true);
   assert.equal(api.visibleAssets(JSON.parse(JSON.stringify(plan.sessions[0])))[0].notionUrl,url);
 });
+
+test('inline image references strip temporary URLs and reject foreign bridge origins', async () => {
+  const {imageReference,bridgeContext}=await import('./notion-image-link.mjs');
+  const value={pageId:'11111111111111111111111111111111',pageTitle:'<script>test</script>',fileName:'a.png',source:{kind:'block',id:'22222222222222222222222222222222'},url:'https://secret.example/signed',token:'secret'};
+  const result=imageReference(value);assert.equal(result.url,undefined);assert.equal(result.token,undefined);
+  assert.equal(result.pageUrl,'https://app.notion.com/p/'+value.pageId);
+  assert.throws(()=>imageReference({...value,source:{kind:'block',id:'../../users/me'}}));
+  const query=new URLSearchParams({imageBridge:'pick',from:'https://whiteringogm.github.io',handoff:'12345678-1234-1234-1234-123456789012'});
+  assert.equal(bridgeContext('https://worker.test/library/?'+query).mode,'pick');
+  query.set('from','https://evil.test');assert.equal(bridgeContext('https://worker.test/library/?'+query),null);
+});

@@ -426,3 +426,36 @@ test('persona pages open scoped memories and notes and preserve scope when retur
   await page.locator('#backToFolders').click();await page.locator('#personaBackHome').click();await page.locator('#openNotes').click();assert.equal(await page.locator('#viewer .note-entry').count(),3);
   assert.deepEqual(errors,[]);
 });
+
+test('inline Notion images bind to a message, persist only stable references and reload without rescanning', async t => {
+  const context = await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});t.after(()=>context.close());
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const library='https://seishi-mcp-auth.koyamadakun.workers.dev';
+  await context.route(library+'/**',async route=>route.fulfill({contentType:'text/html',body:`<!doctype html><meta charset="utf-8"><button id="wrong">wrong nonce</button><button id="choose">この画像を会話に追加</button><script>
+    const q=new URL(location.href).searchParams,nonce=q.get('handoff'),origin=q.get('from');
+    const image={pageId:'11111111111111111111111111111111',pageTitle:'テスト画像',fileName:'moon.png',source:{kind:'block',id:'22222222222222222222222222222222'},url:'https://secret.example/temporary?signature=never-save'};
+    const blob=()=>new Blob([Uint8Array.from(atob('${png.toString('base64')}'),x=>x.charCodeAt(0))],{type:'image/png'});
+    const send=(type,other={})=>opener.postMessage({type,nonce,...other},origin);
+    document.querySelector('#wrong').onclick=()=>send('seishi-image-selected',{nonce:'wrong',image,blob:blob()});
+    document.querySelector('#choose').onclick=()=>send('seishi-image-selected',{image,blob:blob()});
+    addEventListener('message',e=>{if(e.origin!==origin||e.source!==opener||e.data.nonce!==nonce||e.data.type!=='seishi-image-request')return;for(const entry of e.data.entries)send('seishi-image-loaded',{id:entry.id,image:entry.image,blob:blob()});send('seishi-image-done');});
+    send('seishi-image-ready');</script>`}));
+  await page.goto(base+'index.html');await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);
+  await page.evaluate(async()=>{all=[{id:'inline-chat',title:'画像埋め込み試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'inline-message',role:'assistant',text:'元の会話本文を保つ。',time:1700000000}],notes:[],namedSelections:[]}];await save();rebuildFilters();openSession('inline-chat');});
+  const popupEvent=page.waitForEvent('popup');await page.getByRole('button',{name:'＋ Notion画像',exact:true}).click();const picker=await popupEvent;
+  assert.equal(new URL(picker.url()).searchParams.get('persona'),'🌕 まんちゃん');
+  await picker.locator('#wrong').click();assert.equal(await page.evaluate(()=>all[0].notionImages?.length||0),0);
+  await picker.locator('#choose').click();await page.waitForFunction(()=>all[0].notionImages?.length===1);
+  await page.waitForFunction(()=>document.querySelector('.inline-notion-image img')?.naturalWidth>0);
+  assert.equal(await page.evaluate(()=>all[0].messages[0].text),'元の会話本文を保つ。');
+  assert.ok(!(await page.evaluate(()=>JSON.stringify(all))).includes('signature='));assert.ok(!(await page.evaluate(()=>JSON.stringify(all))).includes('blob:'));
+  await page.screenshot({path:path.join(root,'test-results/inline-notion-mobile.png'),fullPage:true});
+  await picker.close();await page.reload();await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);await page.evaluate(()=>openSession('inline-chat'));
+  assert.equal(await page.locator('.inline-notion-image img').count(),0);
+  const resolveEvent=page.waitForEvent('popup');await page.getByRole('button',{name:'Notion画像を表示（1枚）',exact:true}).click();const resolver=await resolveEvent;
+  assert.equal(new URL(resolver.url()).searchParams.get('imageBridge'),'resolve');
+  await page.waitForFunction(()=>document.querySelector('.inline-notion-image img')?.naturalWidth>0);
+  await page.evaluate(async()=>{merge([{...all[0],notionImages:undefined}]);await save();renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),1);
+  await page.getByRole('button',{name:'紐付けを解除',exact:true}).click();await page.locator('.inline-notion-image').waitFor({state:'detached'});assert.equal(await page.evaluate(()=>all[0].notionImages.length),0);
+  assert.deepEqual(errors,[]);
+});

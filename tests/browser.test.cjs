@@ -468,8 +468,12 @@ test('existing correspondence restores missing image messages together, preserve
  await page.evaluate(async()=>{
   const a='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',c='cccccccc-cccc-cccc-cccc-cccccccccccc';
   const asset=(id,p)=>({sessionId:'restore',messageId:id,kind:'image',fileName:p+'.png',notionUrl:'https://app.notion.com/p/'+p.repeat(32),sourceRef:id,sha256:'a'.repeat(64),canonical:true,sourceRole:'assistant',verifiedAt:'2026-01-01T00:00:00Z'});
-  all=[{id:'restore',title:'自動復元の試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'u',role:'user',text:'元の依頼',time:1700000000},{id:'last',role:'assistant',text:'その後の会話',time:1700000001}],canonicalMessageIds:['last',b,a,'u'],externalAssets:[asset(b,'2'),asset(a,'1'),{...asset(c,'3'),canonical:undefined}],notes:[],namedSelections:[]}];await save();rebuildFilters();openSession('restore');
+  all=[{id:'restore',title:'自動復元の試験',folder:'まんちゃん',personaId:'persona-man',time:1700000000,models:[],messages:[{id:'u',role:'user',text:'元の依頼',time:1700000000},{id:'last',role:'assistant',text:'その後の会話',time:1700000001}],canonicalMessageIds:['last',b,a,'u'],externalAssets:[asset(b,'2'),asset(a,'1'),{...asset(c,'3'),canonical:undefined}],notes:[],namedSelections:[{id:'memory',title:'保存した範囲',messageIds:['u','last']}]}];await save();rebuildFilters();openSession('restore');
  });
+ await page.setViewportSize({width:1280,height:800});
+ await page.locator('#sessionMenuBtn').click();
+ await page.locator('[data-panel-memory="memory"]').click();
+ assert.equal(await page.locator('.saved-selection-list .active').count(),1);
  assert.equal(await page.locator('[data-position="after:u"] .inline-notion-image').count(),2);
  assert.deepEqual(await page.locator('[data-position="after:u"] figcaption').allTextContents(),['1.png ／ 1.png','2.png ／ 2.png']);
  assert.match(await page.locator('#viewer').textContent(),/自動復元を保留：1件/);
@@ -481,5 +485,20 @@ test('existing correspondence restores missing image messages together, preserve
  await page.reload();await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);await page.evaluate(()=>openSession('restore'));assert.equal(await page.locator('.inline-notion-image').count(),1);
  await page.evaluate(async()=>{merge([{...all[0],notionImageDismissals:undefined}]);await save();renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),1);
  await page.evaluate(()=>{all[0].messages[0].hidden=true;renderViewer();});assert.equal(await page.locator('.inline-notion-image').count(),0);
+ assert.deepEqual(errors,[]);
+});
+
+
+test('desktop wheel scrolling keeps the header and reading pane stable without rerendering the conversation',async t=>{
+ const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:800}});t.after(()=>context.close());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base+'index.html');await page.waitForFunction(()=>typeof navigationReady!=='undefined'&&navigationReady);
+ await page.evaluate(()=>{all=[{id:'scroll-fixture',title:'長い会話のスクロール',folder:'未分類',time:1700000000,models:[],messages:Array.from({length:300},(_,i)=>({id:'scroll-'+i,role:i%2?'assistant':'user',text:('本文を読み進める。\n').repeat(5),time:1700000000+i})),notes:[],namedSelections:[]}];rebuildFilters();openSession('scroll-fixture');window.scrollNode=document.querySelector('#msg-scroll-0');});
+ const bounds=()=>page.evaluate(()=>({header:document.querySelector('header').getBoundingClientRect().height,viewer:document.querySelector('#viewer').clientHeight,top:document.querySelector('#viewer').scrollTop,documentOverflow:document.documentElement.scrollHeight-innerHeight,hidden:document.body.classList.contains('desktop-header-hidden'),sameNode:window.scrollNode===document.querySelector('#msg-scroll-0')}));
+ const initial=await bounds();await page.locator('#viewer').hover();await page.mouse.wheel(0,900);await page.waitForFunction(()=>document.querySelector('#viewer').scrollTop>100);
+ const down=await bounds();await page.mouse.wheel(0,-300);await page.waitForFunction(top=>document.querySelector('#viewer').scrollTop<top,down.top);const up=await bounds();
+ for(const state of [down,up]){assert.equal(state.header,initial.header);assert.equal(state.viewer,initial.viewer);assert.equal(state.hidden,false);assert.equal(state.sameNode,true);assert.ok(state.documentOverflow<=1);}
+ assert.ok(up.top>0);
+ await page.locator('#sessionMenuBtn').click();await page.locator('#focusModeBtn').click();assert.notEqual(await page.evaluate(()=>getComputedStyle(document.body).overflowY),'hidden');
+ await page.locator('#exitFocusMode').click();assert.equal((await bounds()).viewer,initial.viewer);
  assert.deepEqual(errors,[]);
 });

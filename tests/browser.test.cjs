@@ -362,6 +362,11 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   assert.equal(await dialog.locator('#dlKind').inputValue(), 'closing');
   assert.equal(await dialog.locator('#dlPersona').isDisabled(), true);
   assert.equal(await dialog.locator('.dl-quick-details').getAttribute('open'), null);
+  assert.equal(await dialog.locator('#dlModel').isVisible(), true);
+  assert.equal(await dialog.locator('#dlModelPreset').isVisible(), true);
+  await dialog.locator('#dlModelPreset').selectOption('GPT-4o');
+  assert.equal(await dialog.locator('#dlModel').inputValue(), 'GPT-4o');
+  await dialog.locator('#dlModel').fill('私のカスタムモデル');
   const original = '📓🌕 2026-12-31\n\n貼り付けた原文♡\n #年末\n';
   await dialog.locator('#dlBody').fill(original);
   await page.screenshot({ path: path.join(root, 'test-results/persona-diary-mobile.png'), fullPage: true });
@@ -379,6 +384,7 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   await page.locator('#personaReadDiary').click();
   assert.equal(await page.locator('#viewer .dl-card').count(), 0);
   await page.locator('#dlManual').click();
+  assert.equal(await page.locator('#dlModel').inputValue(), '');
   assert.equal(await page.locator('#dlKind').inputValue(), 'today');
   assert.equal(await page.locator('#dlPersona').inputValue(), '🕯️ かげちゃん');
   await page.locator('#dlDate').fill('2026-12-30');
@@ -390,6 +396,10 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   await page.locator('[data-persona-home="persona-man"]').click(); await page.locator('#personaReadDiary').click();
   assert.equal(await page.locator('#viewer .dl-card').count(), 1);
   assert.equal(await page.evaluate(() => settings.diaryEntries.find(e => e.personaId === 'persona-man').body), original);
+  await page.locator('#dlManual').click();
+  assert.equal(await page.locator('#dlModel').inputValue(), '私のカスタムモデル');
+  assert.equal(await page.locator('#dlModelPreset').inputValue(), '私のカスタムモデル');
+  await page.locator('#dlEditor button[value="cancel"]').first().click();
   await page.locator('#dlBack').click(); await page.locator('#bottomBackBtn').click();
   assert.equal(await page.locator('#viewer .browser-heading h2').textContent(), '締めログ');
   assert.deepEqual(outbound, []); assert.deepEqual(errors, []);

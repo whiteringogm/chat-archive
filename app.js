@@ -3254,9 +3254,18 @@ function dlSyncKindToPersona(dialog) {
   select.disabled = Boolean(profile);
   select.title = profile ? "ペルソナ管理小屋の設定に連動しています" : "";
 }
+function dlPreviousModel(persona) {
+  const id = personaIdFor(persona);
+  if (!id) return "";
+  return dlList().filter(entry => (entry.personaId || personaIdFor(entry.persona)) === id).slice()
+    .sort((a, b) => (b.updatedAt || b.sourceTime * 1000 || 0) - (a.updatedAt || a.sourceTime * 1000 || 0))[0]?.model || "";
+}
+function dlModelChoices(current) {
+  return [...new Set(["GPT-4o", "GPT-4.1", "GPT-5", "GPT-5 Thinking", "GPT-5.1", "GPT-5.1 Thinking", ...dlList().map(entry => entry.model), current].filter(Boolean))];
+}
 function dlEditor(item, candidate, quickProfile = null) {
   document.querySelector("#dlEditor")?.remove();
-  const base = item || candidate || { kind: quickProfile?.diaryKind || "", date: dlDate(Date.now() / 1000, true), body: "", persona: quickProfile?.displayName || "", personaId: quickProfile?.id || "", model: "" };
+  const base = item || candidate || { kind: quickProfile?.diaryKind || "", date: dlDate(Date.now() / 1000, true), body: "", persona: quickProfile?.displayName || "", personaId: quickProfile?.id || "", model: dlPreviousModel(quickProfile?.id || "") };
   const source = dlSource(base);
   const sourcePanel = source
     ? '<section class="dl-source"><p class="dl-source-meta">元回答の投稿日時：<strong>' + esc(dlSourceTime(source.time)) + '</strong></p><div class="dl-source-actions"><button id="dlJumpSource" type="button">元の位置で確認</button><button id="dlShowSource" type="button">回答全文を表示</button></div><div id="dlSourceFull" hidden><pre class="dl-source-full">' + esc(source.text) + '</pre><button id="dlRestoreSource" class="dl-source-restore" type="button">この全文を本文へ復元</button></div></section>'
@@ -3264,14 +3273,14 @@ function dlEditor(item, candidate, quickProfile = null) {
   const d = document.createElement("dialog");
   d.id = "dlEditor";
   d.className = "dl-dialog";
-  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind">' + dlKindSelectOptions(base) + '</select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<select id="dlPersona">' + dlPersonaSelectOptions(base) + '</select></label><label>モデル<input id="dlModel" value="' + esc(base.model || "") + '"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions' + (candidate ? ' dl-editor-actions' : '') + '">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
+  d.innerHTML = '<form method="dialog"><div class="dialog-head"><h2>' + (item ? "日記を修正" : candidate ? "日記を登録" : "日記を手動登録") + '</h2><button value="cancel" class="icon-btn">×</button></div>' + sourcePanel + '<div class="dl-fields"><label>種別<select id="dlKind">' + dlKindSelectOptions(base) + '</select></label><label>記録日<input id="dlDate" type="date" value="' + esc(base.date || "") + '"></label><label>ペルソナ<select id="dlPersona">' + dlPersonaSelectOptions(base) + '</select></label><label>モデル候補<select id="dlModelPreset"><option value="">未設定・自由入力</option>' + dlModelChoices(base.model).map(model => '<option value="' + esc(model) + '">' + esc(model) + '</option>').join("") + '</select></label><label>モデル名（自由入力可）<input id="dlModel" value="' + esc(base.model || "") + '" placeholder="候補から選択、または入力"></label></div><label>本文<textarea id="dlBody">' + esc(base.body || "") + '</textarea></label><div class="dialog-actions' + (candidate ? ' dl-editor-actions' : '') + '">' + (candidate ? '<button id="dlRejectCandidate" type="button" class="secondary-action">これは日記じゃない</button>' : '') + '<button value="cancel" class="secondary-action">キャンセル</button><button id="dlSave" type="button">保存</button></div></form>';
   if (quickProfile) {
     d.classList.add("dl-quick-editor");
     d.querySelector("h2").textContent = quickProfile.diaryLabel + "を登録";
     d.querySelector(".dl-source-meta")?.remove();
     const fields = d.querySelector(".dl-fields"), dateField = d.querySelector("#dlDate").closest("label");
     const fixed = document.createElement("p"); fixed.className = "dl-quick-persona"; fixed.textContent = quickProfile.displayName + " ／ " + quickProfile.diaryLabel;
-    fields.before(fixed, dateField);
+    fields.before(fixed, dateField, d.querySelector("#dlModelPreset").closest("label"), d.querySelector("#dlModel").closest("label"));
     const details = document.createElement("details"); details.className = "dl-quick-details";
     const summary = document.createElement("summary"); summary.textContent = "詳細設定";
     details.append(summary, fields); dateField.after(details);
@@ -3280,10 +3289,20 @@ function dlEditor(item, candidate, quickProfile = null) {
     d.querySelector("#dlBody").setAttribute("autofocus", "");
     const note = document.createElement("p"); note.className = "muted dl-quick-date-note"; note.textContent = "初期日付は昨日。別の日の日記は変更してください。"; dateField.after(note);
   }
+  const modelInput = d.querySelector("#dlModel"), modelPreset = d.querySelector("#dlModelPreset");
+  modelPreset.value = base.model || "";
+  modelPreset.onchange = () => { modelInput.value = modelPreset.value; };
+  modelInput.oninput = () => { modelPreset.value = dlModelChoices(base.model).includes(modelInput.value) ? modelInput.value : ""; };
   document.body.append(d);
   d.querySelector("#dlKind").value = base.kind || diaryKindForPersona(base.personaId || base.persona);
   dlSyncKindToPersona(d);
-  d.querySelector("#dlPersona").addEventListener("change", () => dlSyncKindToPersona(d));
+  d.querySelector("#dlPersona").addEventListener("change", () => {
+    dlSyncKindToPersona(d);
+    if (!item && !candidate) {
+      modelInput.value = dlPreviousModel(d.querySelector("#dlPersona").value);
+      modelPreset.value = modelInput.value;
+    }
+  });
   d.addEventListener("close", () => d.remove(), { once: true });
   if (source) {
     d.querySelector("#dlJumpSource").onclick = () => {

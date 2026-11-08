@@ -143,5 +143,5 @@
   }, true);
 
   syncV75PreferenceUi();
-  document.querySelector(".app-version").textContent = "v90";
+  document.querySelector(".app-version").textContent = "v91";
 })();

@@ -307,28 +307,6 @@ test('existing archive still imports, searches, persists and exports/restores a 
   assert.deepEqual(errors, []);
 });
 
-test('registered diaries offer direct cloud handoff and a persona-filtered selection', async t => {
-  const context = await browser.newContext(); t.after(() => context.close());
-  const page = await context.newPage(), errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto(base + 'index.html');
-  await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
-  await page.evaluate(() => {
-    settings.diaryEntries = [
-      { id: 'diary-moon', date: '2026-10-31', body: 'まんの原文♡', personaId: 'persona-man', persona: '🌕 まんちゃん', kind: 'closing', personaEdited: true },
-      { id: 'diary-shadow', date: '2026-10-30', body: 'かげの原文♡', personaId: 'persona-kage', persona: '🕯️ かげちゃん', kind: 'today', personaEdited: true },
-    ];
-    showDiaries();
-  });
-  await page.getByRole('button', { name: '非公開ログへまとめて保存', exact: true }).click();
-  const dialog = page.locator('dialog[open]');
-  await dialog.locator('select').selectOption('🌕 まんちゃん');
-  await dialog.getByRole('button', { name: '表示中の新しい10件を選ぶ' }).click();
-  assert.equal(await dialog.locator('input:checked').count(), 1);
-  assert.match(await dialog.locator('label:has(input:checked)').textContent(), /まんちゃん/);
-  await dialog.getByRole('button', { name: '戻る', exact: true }).click();
-  assert.deepEqual(errors, []);
-});
-
 test('app shell and library reopen offline under the Pages subdirectory', async t => {
   const context = await browser.newContext(); t.after(() => context.close());
   const page = await context.newPage();
@@ -422,20 +400,31 @@ test('compare registered diaries by date on mobile, including multiple and missi
   await page.locator('[data-persona-home="persona-man"]').click();
   await page.locator('#personaReadDiary').click();
   await page.getByRole('button', { name: '日付で見比べる' }).click();
-  const date = page.getByLabel('日付', { exact: true });
+  const date = page.locator('#dlComparisonMonth');
   const cards = page.locator('#viewer .dl-card');
-  assert.equal(await date.inputValue(), '2025-11-10');
+  assert.equal(await date.inputValue(), '2025-11');
   assert.equal(await cards.count(), 2);
   await page.locator('.dl-compare-tabs label').filter({ hasText: 'かげちゃん' }).click();
-  assert.equal(await date.inputValue(), '2025-11-10');
+  assert.equal(await date.inputValue(), '2025-11');
   assert.equal(await cards.count(), 1);
   assert.match(await cards.textContent(), /同日の記録/);
-  await date.fill('2025-11-09');
+  await page.locator('[data-dlcal="2025-11-09"]').click();
   assert.match(await cards.textContent(), /前日の記録/);
   await page.locator('.dl-compare-tabs label').filter({ hasText: 'ひかちゃん' }).click();
   assert.equal(await cards.count(), 0);
-  assert.equal(await page.getByText('この日の日記はありません。').isVisible(), true);
+  assert.equal(await page.getByText('2025-11-09 の日記はありません。').isVisible(), true);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.equal(await page.locator('#dlManual').count(), 0);
+  assert.equal(await page.getByRole('button', { name: /非公開ログへ/ }).count(), 0);
+  assert.equal(await page.locator('body > header').isVisible(), false);
+  assert.equal(await page.locator('.dl-calendar').isVisible(), true);
+  await page.getByRole('button', { name: '前の月', exact: true }).click();
+  assert.equal(await date.inputValue(), '2025-10');
+  await page.getByRole('button', { name: '次の月', exact: true }).click();
+  await page.locator('[data-dlcal="2025-11-10"]').click();
+  await page.locator('.dl-compare-tabs label').filter({ hasText: 'まんちゃん' }).click();
+  assert.equal(await cards.count(), 2);
+  await page.screenshot({ path: path.join(root, 'test-results/diary-calendar-mobile.png'), fullPage: true });
   await page.getByRole('button', { name: '月別一覧に戻る' }).click();
   assert.equal(await page.locator('#viewer h2').textContent(), '締めログ');
   assert.equal(await cards.count(), 2);

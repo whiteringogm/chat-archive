@@ -2947,7 +2947,7 @@ function dlMissingDates(month, entries) {
   const registered = new Set(entries.map(entry => entry.date));
   return Array.from({ length: limit }, (_, index) => month + "-" + String(index + 1).padStart(2, "0")).filter(date => !registered.has(date));
 }
-function dlCalendar(month, entries, missing) {
+function dlCalendar(month, entries, missing, comparison = false) {
   if (!/^\d{4}-\d{2}$/.test(month)) return "";
   const [year, monthNumber] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -2960,9 +2960,9 @@ function dlCalendar(month, entries, missing) {
   for (let day = 1; day <= lastDay; day++) {
     const date = month + "-" + String(day).padStart(2, "0");
     const count = registeredCounts.get(date) || 0;
-    const state = count ? "registered" : missingSet.has(date) ? "missing" : "future";
+    const state = count ? "registered" : comparison || missingSet.has(date) ? "missing" : "future";
     const label = count ? "登録済み" + count + "件" : state === "missing" ? "未登録" : "まだ先の日付";
-    cells.push('<button type="button" class="dl-calendar-day is-' + state + (count > 1 ? ' is-multiple' : '') + (date === today ? ' is-today' : '') + '" ' + (state === "future" ? "disabled" : 'data-dlcal="' + esc(date) + '"') + ' aria-label="' + esc(date + "（" + label + "）") + '">' + day + (count > 1 ? '<span class="dl-calendar-count" aria-hidden="true">' + count + '</span>' : '') + '</button>');
+    cells.push('<button type="button" class="dl-calendar-day is-' + state + (count > 1 ? ' is-multiple' : '') + (date === today ? ' is-today' : '') + '" ' + (state === "future" ? "disabled" : 'data-dlcal="' + esc(date) + '"') + ' aria-pressed="' + (comparison && date === dlComparisonDate) + '" aria-label="' + esc(date + "（" + label + "）") + '">' + day + (count > 1 ? '<span class="dl-calendar-count" aria-hidden="true">' + count + '</span>' : '') + '</button>');
   }
   return '<div class="dl-calendar"><div class="dl-calendar-head"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div class="dl-calendar-grid">' + cells.join("") + '</div></div>';
 }
@@ -3410,8 +3410,8 @@ function dlSelected() {
   const kind = dlKindMention(text) || diaryKindForPersona(persona);
   return { kind, date: dlExplicit(text) || dlDate(assistant.time), body: dlBody(text, kind), persona, personaId: personaIdFor(persona), model: assistant.model || "", sessionId: session.id, messageId: assistant.id, messageIds: messages.map(m => m.id), sourceTime: assistant.time || 0, sourceText: assistant.text || "" };
 }
-function dlCard(entry) {
-  return '<article class="dl-card"><span class="dl-kind">' + esc(diaryKindLabel(entry.kind, entry.personaId || entry.persona)) + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + '<button data-dl-link="' + esc(entry.id) + '">' + (entry.sessionId ? '紐付けを変更' : '元ログを結びつける') + '</button><button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button></div></article>';
+function dlCard(entry, reading = false) {
+  return '<article class="dl-card"><span class="dl-kind">' + esc(diaryKindLabel(entry.kind, entry.personaId || entry.persona)) + '</span><h3>' + esc(entry.date) + '</h3><small>' + esc(entry.model || "モデル未設定") + '</small><div class="dl-body">' + esc(entry.body) + '</div><div class="dl-actions">' + (entry.sessionId ? '<button class="dl-jump" data-dlj="' + esc(entry.id) + '">元の位置で見る</button>' : "") + (reading === true ? '' : '<button data-dl-link="' + esc(entry.id) + '">' + (entry.sessionId ? '紐付けを変更' : '元ログを結びつける') + '</button><button data-dle="' + esc(entry.id) + '">内容修正</button><button data-dld="' + esc(entry.id) + '">削除</button>') + '</div></article>';
 }
 function dlPayload(entries, persona, month) {
   return {
@@ -3506,10 +3506,11 @@ function dlDateComparison(entries) {
     '<label><input type="radio" name="dlComparisonPersona" value="' + esc(id) + '"' + (id === dlComparisonPersona ? ' checked' : '') + '><span>' + esc(name) + '</span></label>'
   ).join("");
   return '<section class="dl-date-comparison" aria-label="同じ日の日記を見比べる">' +
-    '<div class="dl-tools"><label for="dlComparisonDate">日付</label><input id="dlComparisonDate" type="date" value="' + esc(dlComparisonDate) + '">' +
-    '<button id="dlCloseComparison" type="button">月別一覧に戻る</button></div>' +
+    '<div class="dl-compare-heading"><h2>日記を見比べる</h2><button id="dlCloseComparison" type="button">月別一覧に戻る</button></div>' +
+    '<div class="dl-compare-month"><button type="button" data-dl-month="-1" aria-label="前の月">‹</button><label>年月<input id="dlComparisonMonth" type="month" value="' + esc(dlComparisonDate.slice(0, 7)) + '"></label><button type="button" data-dl-month="1" aria-label="次の月">›</button></div>' +
+    dlCalendar(dlComparisonDate.slice(0, 7), entries, [], true) +
     '<div class="dl-compare-tabs" role="group" aria-label="ペルソナ">' + tabs + '</div>' +
-    '<div aria-live="polite">' + (matches.length ? matches.map(dlCard).join("") : '<p class="muted">この日の日記はありません。</p>') + '</div></section>';
+    '<div aria-live="polite">' + (matches.length ? matches.map(entry => dlCard(entry, true)).join("") : '<p class="muted">' + esc(dlComparisonDate) + ' の日記はありません。</p>') + '</div></section>';
 }
 function dlRender() {
   const diaryProfile = personaProfileFor(dlPersonaFilter);
@@ -3518,21 +3519,15 @@ function dlRender() {
   const candidates = '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + (dlCandidates.length ? dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + esc(diaryKindLabel(c.kind, c.personaId || c.persona)) + ' · ' + esc(personaDisplay(c.personaId || c.persona || "ペルソナ未設定")) + '</strong>' + (c.warning ? '<button type="button" class="dl-warning dl-warning-button" data-dldup="' + esc(c.id) + '">⚠ ' + esc(c.warning) + '<span>登録済みの日記を見る ›</span></button>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><div class="dl-actions"><button data-dlc="' + esc(c.id) + '">確認・登録</button><button data-dlx="' + esc(c.id) + '">これは日記じゃない</button></div></div>').join("") : "<p>新しい候補はありません。</p>") + "</section>";
   const excluded = dlExcluded();
   const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(personaDisplay(x.personaId || x.persona || "ペルソナ未設定")) + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
-  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlCompare" type="button" aria-pressed="' + Boolean(dlComparisonDate) + '">日付で見比べる</button><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + (dlComparisonDate ? dlDateComparison(entries) : '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml);
+  const diaryHtml = dlComparisonDate ? '' : '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlCompare" type="button" aria-pressed="' + Boolean(dlComparisonDate) + '">日付で見比べる</button><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + (dlComparisonDate ? dlDateComparison(entries) : '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml);
   const candidateHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY CANDIDATES</p><h2>日記の抽出候補</h2><p class="muted">確認して登録するか、候補から除外できます。</p></div><span class="count-badge">' + dlCandidates.length + ' 件</span></div><div class="dl-tools"><button id="dlReturn">← 登録済みの日記へ戻る</button></div>' + candidates;
-  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">ホーム</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
-  if (diaryProfile && !dlCandidateMode) {
+  $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">ホーム</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : dlComparisonDate ? dlDateComparison(entries) : diaryHtml) + "</section>";
+  if (diaryProfile && !dlCandidateMode && !dlComparisonDate) {
     document.querySelector("#viewer .browser-heading h2").textContent = diaryProfile.diaryLabel;
     document.querySelector("#viewer .browser-heading .muted").textContent = diaryProfile.displayName + "の日記";
     $("dlBack").textContent = diaryProfile.displayName;
   }
-  if (dlComparisonDate && !dlCandidateMode) {
-    document.querySelector("#viewer .browser-heading h2").textContent = "同じ日の日記を見比べる";
-    document.querySelector("#viewer .browser-heading .muted").textContent = "日付を選んで、ペルソナを切り替えられます。";
-    document.querySelector("#viewer .browser-heading .count-badge").hidden = true;
-    $("dlSort").parentElement.hidden = true;
-  }
-  if (diarySaveNotice && !dlCandidateMode) {
+  if (diarySaveNotice && !dlCandidateMode && !dlComparisonDate) {
     const notice = document.createElement("div"); notice.className = "diary-save-notice"; notice.setAttribute("role", "status");
     const text = document.createElement("p"); text.textContent = diarySaveNotice;
     const sync = document.createElement("button"); sync.type = "button"; sync.textContent = "クラウド同期へ";
@@ -3551,22 +3546,27 @@ function dlRender() {
     dlComparisonDate = dates.sort().at(-1) || dlTodayJst();
     dlComparisonPersona = dlPersonaFilter;
     dlRender();
-    $("dlComparisonDate").focus();
+    $("dlComparisonMonth").focus({ preventScroll: true });
   };
   if ($("dlCloseComparison")) $("dlCloseComparison").onclick = () => {
     dlComparisonDate = "";
     dlRender();
     $("dlCompare").focus({ preventScroll: true });
   };
-  if ($("dlComparisonDate")) $("dlComparisonDate").onchange = event => {
-    if (!event.target.value) {
-      event.target.value = dlComparisonDate;
-      return;
-    }
-    dlComparisonDate = event.target.value;
+  if ($("dlComparisonMonth")) $("dlComparisonMonth").onchange = event => {
+    if (!event.target.value) { event.target.value = dlComparisonDate.slice(0, 7); return; }
+    dlComparisonDate = event.target.value + "-01";
     dlRender();
-    $("dlComparisonDate").focus({ preventScroll: true });
+    $("dlComparisonMonth").focus({ preventScroll: true });
   };
+  document.querySelectorAll("[data-dl-month]").forEach(button => button.onclick = () => {
+    const date = new Date(dlComparisonDate + "T00:00:00Z");
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() + Number(button.dataset.dlMonth));
+    dlComparisonDate = date.toISOString().slice(0, 10);
+    dlRender();
+    document.querySelector('[data-dl-month="' + button.dataset.dlMonth + '"]').focus({ preventScroll: true });
+  });
   document.querySelectorAll('input[name="dlComparisonPersona"]').forEach(tab => tab.onchange = () => {
     dlComparisonPersona = tab.value;
     dlRender();
@@ -3593,6 +3593,12 @@ function dlRender() {
   }
   document.querySelectorAll("[data-dldup]").forEach(b => b.onclick = () => dlShowDuplicate(dlCandidates.find(x => x.id === b.dataset.dldup)));
   document.querySelectorAll("[data-dlcal]").forEach(button => button.onclick = () => {
+    if (dlComparisonDate) {
+      dlComparisonDate = button.dataset.dlcal;
+      dlRender();
+      document.querySelector('[data-dlcal="' + dlComparisonDate + '"]').focus({ preventScroll: true });
+      return;
+    }
     const target = button.closest(".dl-month")?.querySelector('[data-dl-date-anchor="' + CSS.escape(button.dataset.dlcal) + '"]');
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -268,6 +268,8 @@ let all = [],
   currentPersonaHome = "",
   recordPersonaFilter = "",
   dlPersonaFilter = "",
+  dlComparisonDate = "",
+  dlComparisonPersona = "",
   diarySaveNotice = "",
   viewMode = "folders",
   sessionMessageQuery = "",
@@ -2150,6 +2152,7 @@ function showPersonaHome(id) {
 }
 function showPersonaDiaries(id) {
   if (viewMode !== "diaries" || dlPersonaFilter !== id) rememberCurrentScreen();
+  dlComparisonDate = "";
   dlPersonaFilter = id; dlCandidateMode = false; selected = ""; viewMode = "diaries";
   renderList(); renderViewer();
 }
@@ -2568,6 +2571,8 @@ function captureNavigationState() {
     currentPersonaHome,
     recordPersonaFilter,
     dlPersonaFilter,
+    dlComparisonDate,
+    dlComparisonPersona,
     sessionMessageQuery,
     sessionModelFilter,
     sessionIncludePrevious,
@@ -2610,6 +2615,8 @@ function restorePreviousScreen() {
   currentPersonaHome = previous.currentPersonaHome || "";
   recordPersonaFilter = previous.recordPersonaFilter || "";
   dlPersonaFilter = previous.dlPersonaFilter || "";
+  dlComparisonDate = previous.dlComparisonDate || "";
+  dlComparisonPersona = previous.dlComparisonPersona || "";
   sessionMessageQuery = previous.sessionMessageQuery;
   sessionModelFilter = previous.sessionModelFilter;
   sessionIncludePrevious = previous.sessionIncludePrevious;
@@ -3483,19 +3490,47 @@ function dlGroupedRows(rows) {
     return '<details class="dl-persona"><summary class="dl-persona-summary"><strong>🎭 ' + esc(persona) + '</strong><span class="dl-group-count">' + count + '件　⌄</span></summary><div class="dl-persona-export"><div class="dl-export-actions"><button class="dl-export-primary" data-dlx-zip="' + esc(persona) + '">このペルソナをZIP出力</button></div></div><div class="dl-months">' + monthHtml + '</div></details>';
   }).join("");
 }
+function dlDateComparison(entries) {
+  const profiles = new Map(personaProfiles().map(profile => [profile.id, profile.displayName]));
+  const personaKey = entry => entry.personaId || entry.persona || "";
+  for (const entry of entries) {
+    const key = personaKey(entry);
+    if (!profiles.has(key)) profiles.set(key, dlEntryPersona(entry));
+  }
+  const day = entries.filter(entry => entry.date === dlComparisonDate);
+  if (!profiles.has(dlComparisonPersona)) {
+    dlComparisonPersona = day.length ? personaKey(day[0]) : profiles.keys().next().value;
+  }
+  const matches = day.filter(entry => personaKey(entry) === dlComparisonPersona);
+  const tabs = [...profiles].map(([id, name]) =>
+    '<label><input type="radio" name="dlComparisonPersona" value="' + esc(id) + '"' + (id === dlComparisonPersona ? ' checked' : '') + '><span>' + esc(name) + '</span></label>'
+  ).join("");
+  return '<section class="dl-date-comparison" aria-label="同じ日の日記を見比べる">' +
+    '<div class="dl-tools"><label for="dlComparisonDate">日付</label><input id="dlComparisonDate" type="date" value="' + esc(dlComparisonDate) + '">' +
+    '<button id="dlCloseComparison" type="button">月別一覧に戻る</button></div>' +
+    '<div class="dl-compare-tabs" role="group" aria-label="ペルソナ">' + tabs + '</div>' +
+    '<div aria-live="polite">' + (matches.length ? matches.map(dlCard).join("") : '<p class="muted">この日の日記はありません。</p>') + '</div></section>';
+}
 function dlRender() {
   const diaryProfile = personaProfileFor(dlPersonaFilter);
-  const rows = dlList().filter(entry => !diaryProfile || entry.personaId === diaryProfile.id).slice().sort(dlCompareDate);
+  const entries = dlList();
+  const rows = entries.filter(entry => !diaryProfile || entry.personaId === diaryProfile.id).sort(dlCompareDate);
   const candidates = '<section class="dl-candidates"><h3>抽出候補 ' + dlCandidates.length + '件</h3>' + (dlCandidates.length ? dlCandidates.map(c => '<div class="dl-candidate"><strong>' + esc(c.date || "日付不明") + ' · ' + esc(diaryKindLabel(c.kind, c.personaId || c.persona)) + ' · ' + esc(personaDisplay(c.personaId || c.persona || "ペルソナ未設定")) + '</strong>' + (c.warning ? '<button type="button" class="dl-warning dl-warning-button" data-dldup="' + esc(c.id) + '">⚠ ' + esc(c.warning) + '<span>登録済みの日記を見る ›</span></button>' : '') + '<p>' + esc(c.body.slice(0, 160)) + '</p><div class="dl-actions"><button data-dlc="' + esc(c.id) + '">確認・登録</button><button data-dlx="' + esc(c.id) + '">これは日記じゃない</button></div></div>').join("") : "<p>新しい候補はありません。</p>") + "</section>";
   const excluded = dlExcluded();
   const excludedHtml = excluded.length ? '<details class="dl-candidates"><summary>候補から除外したログ ' + excluded.length + '件</summary>' + excluded.map(x => '<div class="dl-candidate"><strong>' + esc(x.date || "日付不明") + ' · ' + esc(personaDisplay(x.personaId || x.persona || "ペルソナ未設定")) + '</strong><p>' + esc(x.preview || "") + '</p><button data-dlr="' + esc(dlSourceKey(x)) + '">候補へ戻す</button></div>').join("") + "</details>" : "";
-  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml;
+  const diaryHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY LOGS</p><h2>登録済みの日記</h2><p class="muted">ペルソナごと・月ごとに分けて表示します。</p></div><span class="count-badge">' + rows.length + ' 件</span></div><div class="dl-tools"><button id="dlCompare" type="button" aria-pressed="' + Boolean(dlComparisonDate) + '">日付で見比べる</button><button id="dlScan">ログから候補を抽出</button><button id="dlManual">手動登録</button><button id="dlOpenPersonaHut">🛖 ペルソナ管理小屋</button><div class="dl-order"><label for="dlSort">並び順</label><select id="dlSort"><option value="desc">新しい順（降順）</option><option value="asc">古い順（昇順）</option></select></div></div>' + dlTemplateHelp() + (dlComparisonDate ? dlDateComparison(entries) : '<div class="dl-personas">' + (rows.length ? dlGroupedRows(rows) : "<p>まだ登録されていません。</p>") + "</div>" + excludedHtml);
   const candidateHtml = '<div class="browser-heading"><div><p class="browser-kicker">DIARY CANDIDATES</p><h2>日記の抽出候補</h2><p class="muted">確認して登録するか、候補から除外できます。</p></div><span class="count-badge">' + dlCandidates.length + ' 件</span></div><div class="dl-tools"><button id="dlReturn">← 登録済みの日記へ戻る</button></div>' + candidates;
   $("viewer").innerHTML = '<section class="archive-browser"><nav class="breadcrumbs"><button id="dlBack">ホーム</button><span>›</span><button id="dlCrumbDiary">日記</button>' + (dlCandidateMode ? '<span>›</span><strong>抽出候補</strong>' : "") + '</nav>' + (dlCandidateMode ? candidateHtml : diaryHtml) + "</section>";
   if (diaryProfile && !dlCandidateMode) {
     document.querySelector("#viewer .browser-heading h2").textContent = diaryProfile.diaryLabel;
     document.querySelector("#viewer .browser-heading .muted").textContent = diaryProfile.displayName + "の日記";
     $("dlBack").textContent = diaryProfile.displayName;
+  }
+  if (dlComparisonDate && !dlCandidateMode) {
+    document.querySelector("#viewer .browser-heading h2").textContent = "同じ日の日記を見比べる";
+    document.querySelector("#viewer .browser-heading .muted").textContent = "日付を選んで、ペルソナを切り替えられます。";
+    document.querySelector("#viewer .browser-heading .count-badge").hidden = true;
+    $("dlSort").parentElement.hidden = true;
   }
   if (diarySaveNotice && !dlCandidateMode) {
     const notice = document.createElement("div"); notice.className = "diary-save-notice"; notice.setAttribute("role", "status");
@@ -3507,6 +3542,36 @@ function dlRender() {
   $("dlBack").onclick = () => diaryProfile ? showPersonaHome(diaryProfile.id) : showFolders();
   $("dlCrumbDiary").onclick = () => diaryProfile ? showPersonaDiaries(diaryProfile.id) : showDiaries();
   if ($("dlReturn")) $("dlReturn").onclick = showDiaries;
+  if ($("dlCompare")) $("dlCompare").onclick = () => {
+    if (dlComparisonDate) {
+      $("dlCloseComparison").click();
+      return;
+    }
+    const dates = (rows.length ? rows : entries).map(entry => entry.date).filter(date => /^\d{4}-\d{2}-\d{2}$/.test(date || ""));
+    dlComparisonDate = dates.sort().at(-1) || dlTodayJst();
+    dlComparisonPersona = dlPersonaFilter;
+    dlRender();
+    $("dlComparisonDate").focus();
+  };
+  if ($("dlCloseComparison")) $("dlCloseComparison").onclick = () => {
+    dlComparisonDate = "";
+    dlRender();
+    $("dlCompare").focus({ preventScroll: true });
+  };
+  if ($("dlComparisonDate")) $("dlComparisonDate").onchange = event => {
+    if (!event.target.value) {
+      event.target.value = dlComparisonDate;
+      return;
+    }
+    dlComparisonDate = event.target.value;
+    dlRender();
+    $("dlComparisonDate").focus({ preventScroll: true });
+  };
+  document.querySelectorAll('input[name="dlComparisonPersona"]').forEach(tab => tab.onchange = () => {
+    dlComparisonPersona = tab.value;
+    dlRender();
+    document.querySelector('input[name="dlComparisonPersona"]:checked').focus({ preventScroll: true });
+  });
   if ($("dlScan")) $("dlScan").onclick = dlScan;
   if ($("dlManual")) $("dlManual").onclick = () => diaryProfile ? newPersonaDiary(diaryProfile.id) : dlEditor();
   if ($("dlOpenPersonaHut")) $("dlOpenPersonaHut").onclick = openPersonaHut;
@@ -3584,6 +3649,7 @@ function dlRender() {
 }
 function showDiaries() {
   if (viewMode !== "diaries" || dlCandidateMode) rememberCurrentScreen();
+  dlComparisonDate = "";
   dlPersonaFilter = "";
   dlCandidateMode = false;
   viewMode = "diaries";
@@ -3599,7 +3665,7 @@ renderFolderBrowser = function() {
   dlBaseFolders();
   const anchor = document.querySelector("#recordShortcuts");
   if (!anchor) return;
-  anchor.insertAdjacentHTML("beforeend", '<button id="openDiaries" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>日記</strong><small>ペルソナ別・月別に読む</small></span><span class="record-shortcut-count">' + dlList().length + '件 ›</span></button>');
+  anchor.insertAdjacentHTML("beforeend", '<button id="openDiaries" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>日記</strong><small>ペルソナ別・月別に読む／同じ日を見比べる</small></span><span class="record-shortcut-count">' + dlList().length + '件 ›</span></button>');
   $("openDiaries").onclick = showDiaries;
 };
 const dlBasePanel = renderSessionPanel;

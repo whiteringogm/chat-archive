@@ -10,3 +10,21 @@
 .persona-home a.record-shortcut{text-decoration:none}
 
 .dl-link-results{display:grid;gap:8px;max-height:340px;overflow:auto;margin:12px 0}.dl-link-results button{display:grid;gap:5px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}.dl-link-results button[aria-pressed="true"]{outline:2px solid var(--accent)}.dl-link-results small{color:var(--muted)}.dl-link-results span{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}#dlLinkSource input[type="checkbox"]{width:auto}#dlLinkSource .dialog-actions{flex-wrap:wrap}
+
+.dl-date-comparison { margin-block: 1rem; }
+.dl-order[hidden] { display: none; }
+.dl-compare-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
+.dl-compare-tabs label { position: relative; cursor: pointer; }
+.dl-compare-tabs input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.dl-compare-tabs span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .35rem .8rem;
+  border: 1px solid var(--line);
+  border-radius: .65rem;
+  background: var(--card);
+  color: var(--ink);
+}
+.dl-compare-tabs input:checked + span { background: var(--accent); color: #fff; font-weight: 700; }
+.dl-compare-tabs input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }

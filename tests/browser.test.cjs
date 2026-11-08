@@ -405,6 +405,42 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   assert.deepEqual(outbound, []); assert.deepEqual(errors, []);
 });
 
+test('compare registered diaries by date on mobile, including multiple and missing entries', async t => {
+  const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  await page.goto(base + 'index.html');
+  await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
+  await page.evaluate(() => {
+    settings.diaryEntries = [
+      { id: 'm1', personaId: 'persona-man', date: '2025-11-10', body: '締めログ一件目' },
+      { id: 'm2', personaId: 'persona-man', date: '2025-11-10', body: '締めログ二件目' },
+      { id: 'k1', personaId: 'persona-kage', date: '2025-11-10', body: '同日の記録' },
+      { id: 'k2', personaId: 'persona-kage', date: '2025-11-09', body: '前日の記録' },
+    ];
+  });
+  await page.locator('[data-persona-home="persona-man"]').click();
+  await page.locator('#personaReadDiary').click();
+  await page.getByRole('button', { name: '日付で見比べる' }).click();
+  const date = page.getByLabel('日付', { exact: true });
+  const cards = page.locator('#viewer .dl-card');
+  assert.equal(await date.inputValue(), '2025-11-10');
+  assert.equal(await cards.count(), 2);
+  await page.locator('.dl-compare-tabs label').filter({ hasText: 'かげちゃん' }).click();
+  assert.equal(await date.inputValue(), '2025-11-10');
+  assert.equal(await cards.count(), 1);
+  assert.match(await cards.textContent(), /同日の記録/);
+  await date.fill('2025-11-09');
+  assert.match(await cards.textContent(), /前日の記録/);
+  await page.locator('.dl-compare-tabs label').filter({ hasText: 'ひかちゃん' }).click();
+  assert.equal(await cards.count(), 0);
+  assert.equal(await page.getByText('この日の日記はありません。').isVisible(), true);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByRole('button', { name: '月別一覧に戻る' }).click();
+  assert.equal(await page.locator('#viewer h2').textContent(), '締めログ');
+  assert.equal(await cards.count(), 2);
+});
+
 test('manual diaries link to later imports without changing text, date or model; cancel, rollback and unlink preserve the diary', async t => {
   const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } }); t.after(() => context.close());
   const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));

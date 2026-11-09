@@ -402,6 +402,7 @@ test('compare registered diaries by date on mobile, including multiple and missi
   await page.getByRole('button', { name: '日付で見比べる' }).click();
   const date = page.locator('#dlComparisonMonth');
   const cards = page.locator('#viewer .dl-card');
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.dlcal), '2025-11-10');
   assert.equal(await date.inputValue(), '2025-11');
   assert.equal(await cards.count(), 2);
   await page.locator('.dl-compare-tabs label').filter({ hasText: 'かげちゃん' }).click();
@@ -423,6 +424,11 @@ test('compare registered diaries by date on mobile, including multiple and missi
   await page.getByRole('button', { name: '前の月', exact: true }).click();
   assert.equal(await date.inputValue(), '2025-10');
   await page.getByRole('button', { name: '次の月', exact: true }).click();
+  await date.fill('2025-12');
+  await date.dispatchEvent('change');
+  assert.equal(await page.evaluate(() => document.activeElement?.dataset.dlcal), '2025-12-01');
+  await date.fill('2025-11');
+  await date.dispatchEvent('change');
   await page.locator('[data-dlcal="2025-11-10"]').click();
   await page.locator('.dl-compare-tabs label').filter({ hasText: 'まんちゃん' }).click();
   assert.equal(await cards.count(), 2);

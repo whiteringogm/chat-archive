@@ -3547,7 +3547,7 @@ function dlRender() {
     dlComparisonDate = dates.sort().at(-1) || dlTodayJst();
     dlComparisonPersona = dlPersonaFilter;
     dlRender();
-    $("dlComparisonMonth").focus({ preventScroll: true });
+    document.querySelector('[data-dlcal="' + dlComparisonDate + '"]').focus({ preventScroll: true });
   };
   if ($("dlCloseComparison")) $("dlCloseComparison").onclick = () => {
     dlComparisonDate = "";
@@ -3558,7 +3558,7 @@ function dlRender() {
     if (!event.target.value) { event.target.value = dlComparisonDate.slice(0, 7); return; }
     dlComparisonDate = event.target.value + "-01";
     dlRender();
-    $("dlComparisonMonth").focus({ preventScroll: true });
+    document.querySelector('[data-dlcal="' + dlComparisonDate + '"]').focus({ preventScroll: true });
   };
   document.querySelectorAll("[data-dl-month]").forEach(button => button.onclick = () => {
     const date = new Date(dlComparisonDate + "T00:00:00Z");

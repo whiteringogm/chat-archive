@@ -3491,8 +3491,9 @@ function dlGroupedRows(rows) {
   }).join("");
 }
 function dlDateComparison(entries) {
-  const profiles = new Map(personaProfiles().map(profile => [profile.id, profile.displayName]));
   const personaKey = entry => entry.personaId || entry.persona || "";
+  const registeredPersonas = new Set(entries.map(personaKey));
+  const profiles = new Map(personaProfiles().filter(profile => registeredPersonas.has(profile.id)).map(profile => [profile.id, profile.displayName]));
   for (const entry of entries) {
     const key = personaKey(entry);
     if (!profiles.has(key)) profiles.set(key, dlEntryPersona(entry));

@@ -383,6 +383,63 @@ test('persona-first diary entry defaults to yesterday in Japan, preserves pasted
   assert.deepEqual(outbound, []); assert.deepEqual(errors, []);
 });
 
+test('conversation day reader selects JST messages across sessions and keeps persona/date when returning', async t => {
+  const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, timezoneId: 'America/Los_Angeles' });
+  t.after(() => context.close());
+  const page = await context.newPage(), errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(base + 'index.html');
+  await page.waitForFunction(() => typeof navigationReady !== 'undefined' && navigationReady);
+  await page.evaluate(() => {
+    const msg = (id, time, text, extra = {}) => ({ id, time: time === null ? null : Date.parse(time) / 1000, text, role: 'user', model: '', ...extra });
+    const session = (id, personaId, messages, extra = {}) => ({ id, title: id, personaId, folder: '未分類', time: 1, models: [], messages, notes: [], namedSelections: [], ...extra });
+    const start = msg('start', '2025-11-09T15:00:00Z', '日付境界の会話 <script>throw 1</script>');
+    all = [
+      session('moon-first', 'persona-man', [msg('before', '2025-11-09T14:59:59Z', '前日の会話'), start, msg('unknown', null, '日時不明')]),
+      session('moon-second', 'persona-man', [start, msg('last', '2025-11-10T14:59:59Z', '別スレッドの夜'), msg('next', '2025-11-10T15:00:00Z', '翌日の会話'), msg('hidden', '2025-11-10T01:00:00Z', '非表示', { hidden: true }), msg('branch', '2025-11-10T02:00:00Z', '別の枝')], { canonicalMessageIds: ['start', 'last', 'next', 'hidden'] }),
+      session('shadow-session', 'persona-kage', [msg('shadow', '2025-11-10T03:00:00Z', 'かげの会話')]),
+      session('trash-session', 'persona-man', [msg('trash', '2025-11-10T03:00:00Z', 'ゴミ箱の会話')], { trashedAt: 1 }),
+    ];
+    showPersonaHome('persona-man');
+  });
+  await page.locator('#personaReadDay').click();
+  await page.locator('[data-conversation-day="2025-11-10"]').click();
+  assert.equal(await page.locator('.conversation-day-message').count(), 2);
+  assert.match(await page.locator('#conversationDayMessages').textContent(), /日付境界の会話.*別スレッドの夜/s);
+  assert.equal(await page.locator('#conversationDayMessages script').count(), 0);
+  assert.match(await page.locator('#conversationDayMessages').textContent(), /00:00:00.*23:59:59/s);
+  assert.notEqual(await page.evaluate(() => document.activeElement?.id), 'conversationDayMonth');
+  await page.locator('[data-conversation-persona="persona-kage"]').click();
+  assert.match(await page.locator('#conversationDaySummary').textContent(), /2025-11-10/);
+  assert.equal(await page.locator('.conversation-day-message').count(), 1);
+  assert.match(await page.locator('#conversationDayMessages').textContent(), /かげの会話/);
+  await page.locator('.conversation-day-message button').click();
+  assert.equal(await page.evaluate(() => selected), 'shadow-session');
+  await page.locator('#bottomBackBtn').click();
+  assert.match(await page.locator('#conversationDaySummary').textContent(), /2025-11-10.*かげちゃん/s);
+  await page.locator('[data-conversation-day="2025-11-12"]').click();
+  assert.match(await page.locator('#conversationDayMessages').textContent(), /この端末のログにはありません/);
+  await page.evaluate(() => {
+    const s = all.find(s => s.id === 'shadow-session');
+    s.messages = Array.from({ length: 161 }, (_, i) => ({ id: 'many-' + i, text: '会話 ' + i, role: 'user', time: Date.parse('2025-11-10T00:00:00Z') / 1000 + i }));
+    showConversationDay('persona-kage');
+  });
+  await page.locator('[data-conversation-day="2025-11-10"]').click();
+  assert.equal(await page.locator('.conversation-day-message').count(), 80);
+  await page.locator('#conversationDayMore').click();
+  assert.equal(await page.locator('.conversation-day-message').count(), 160);
+  await page.locator('#conversationDayMore').click();
+  assert.equal(await page.locator('.conversation-day-message').count(), 161);
+  assert.equal(await page.locator('#conversationDayMore').isVisible(), false);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.evaluate(() => { window.scrollTo(0, 0); document.getElementById('viewer').scrollTop = 0; });
+  await page.screenshot({ path: path.join(root, 'test-results', 'conversation-day-mobile.png') });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator('#conversationDayLatest').click();
+  await page.screenshot({ path: path.join(root, 'test-results', 'conversation-day-desktop.png') });
+  assert.deepEqual(errors, []);
+});
+
 test('compare registered diaries by date on mobile, including multiple and missing entries', async t => {
   const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
   t.after(() => context.close());

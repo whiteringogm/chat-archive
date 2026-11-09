@@ -2166,6 +2166,8 @@ function renderPersonaHome(profile) {
   $("viewer").scrollTop = 0;
   $("viewer").innerHTML = `<section class="archive-browser persona-home"><nav class="breadcrumbs"><button id="personaBackHome">ホーム</button><span>›</span><strong>${esc(profile.displayName)}</strong></nav><div class="browser-heading"><div><p class="browser-kicker">PERSONA</p><h2>${esc(profile.displayName)}</h2><p class="muted">日記を残す、記録を読む。</p></div></div><div class="record-shortcuts"><button id="personaNewDiary" class="record-shortcut persona-register"><span class="record-shortcut-icon">＋</span><span><strong>${esc(profile.diaryLabel)}を登録</strong><small>本文を貼り付けて保存</small></span><span aria-hidden="true">›</span></button><button id="personaReadDiary" class="record-shortcut"><span class="record-shortcut-icon">☾</span><span><strong>${esc(profile.diaryLabel)}を読む</strong><small>登録済みの日記</small></span><span class="record-shortcut-count">${diaryCount}件 ›</span></button><button id="personaReadMemories" class="record-shortcut"><span class="record-shortcut-icon">✦</span><span><strong>思い出を読む</strong><small>保存した会話の範囲</small></span><span class="record-shortcut-count">${memoryCount}件 ›</span></button><button id="personaReadNotes" class="record-shortcut"><span class="record-shortcut-icon">✎</span><span><strong>メモを読む</strong><small>会話の行間の編纂メモ</small></span><span class="record-shortcut-count">${noteCount}件 ›</span></button><a id="personaNotionImages" class="record-shortcut" href="https://seishi-mcp-auth.koyamadakun.workers.dev/library/?${esc(new URLSearchParams({persona:profile.displayName}).toString())}" target="_blank" rel="noopener noreferrer"><span class="record-shortcut-icon">▧</span><span><strong>Notion画像を見る</strong><small>このペルソナを選んだ状態で開く</small></span><span aria-hidden="true">↗</span></a></div><section class="home-section"><div class="home-section-heading"><span class="home-section-icon">▰</span><div><h3>会話を読む</h3><p>このペルソナのフォルダ</p></div></div><div class="folder-grid">${folders.map(folder => `<button class="folder-card" data-persona-folder="${esc(folder)}"><span class="folder-icon">▰</span><strong>${esc(folder)}</strong><span>${activeSessions().filter(session => (session.folder || "未分類") === folder).length} セッション</span></button>`).join("") || '<p class="muted">このペルソナのフォルダはまだありません。</p>'}</div></section></section>`;
   $("personaBackHome").onclick = showFolders;
+  $("personaReadDiary").insertAdjacentHTML("afterend", '<button id="personaReadDay" class="record-shortcut"><span class="record-shortcut-icon">▦</span><span><strong>日付で会話を読む</strong><small>その日の会話をスレッドをまたいで表示</small></span><span aria-hidden="true">›</span></button>');
+  $("personaReadDay").onclick = () => showConversationDay(profile.id);
   $("personaNewDiary").onclick = () => newPersonaDiary(profile.id);
   $("personaReadDiary").onclick = () => showPersonaDiaries(profile.id);
   $("personaReadMemories").onclick = () => showMemories(profile.id);
@@ -2564,6 +2566,7 @@ $("clearArchive").onclick = async () => {
 // Collapsing the header here used to resize the scroll container on every direction change.
 function captureNavigationState() {
   return {
+    conversationDay: { ...conversationDayState },
     selected,
     viewMode,
     currentFolder,
@@ -2610,6 +2613,7 @@ function restorePreviousScreen() {
   navigationRestoring = true;
   selected = previous.selected;
   viewMode = previous.viewMode;
+  if (previous.conversationDay) conversationDayState = { ...previous.conversationDay };
   currentFolder = previous.currentFolder;
   currentMemoryFolder = previous.currentMemoryFolder;
   currentPersonaHome = previous.currentPersonaHome || "";
@@ -3859,6 +3863,11 @@ setupV72Chrome();
 setupBottomNavigationViewportSync();
 const v72BaseViewer = renderViewer;
 renderViewer = function(options) {
+  if (viewMode === "conversation-day") {
+    renderConversationDay();
+    updateBottomNavigation();
+    return;
+  }
   const result = v72BaseViewer(options);
   document.querySelectorAll(".field-note").forEach(note => {
     if (note.textContent.includes("表示設定"))
@@ -3867,3 +3876,109 @@ renderViewer = function(options) {
   updateBottomNavigation();
   return result;
 };
+
+// Read a Japan-calendar day from local canonical messages, never from title/body dates.
+let conversationDayState = { persona: "", date: "", month: "", limit: 80 };
+let conversationDayIndex = new Map(), conversationDayIndexPersona = "", conversationDayUnknown = 0;
+function conversationDayStamp(value) {
+  const time = typeof value === "number" ? (value < 1e11 ? value * 1000 : value) : typeof value === "string" && value.trim() ? Date.parse(value) : NaN;
+  return Number.isFinite(time) && Math.abs(time) <= 8.64e15 - 32400000 ? time : NaN;
+}
+function conversationDayKey(time) {
+  return new Date(time + 32400000).toISOString().slice(0, 10);
+}
+function rebuildConversationDayIndex(persona) {
+  conversationDayIndex = new Map(); conversationDayIndexPersona = persona; conversationDayUnknown = 0;
+  const seen = new Set();
+  for (const session of activeSessions()) {
+    if (personaIdFor(effectivePersona(session)) !== persona) continue;
+    const canonical = session.canonicalMessageIds?.length ? new Set(session.canonicalMessageIds) : null;
+    for (const [order, message] of session.messages.entries()) {
+      if (message.hidden || canonical && !canonical.has(message.id)) continue;
+      const time = conversationDayStamp(message.time);
+      if (!Number.isFinite(time)) { conversationDayUnknown++; continue; }
+      const key = message.id ? JSON.stringify([message.id, message.role, time, message.text]) : JSON.stringify([session.id, order]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const day = conversationDayKey(time);
+      if (!conversationDayIndex.has(day)) conversationDayIndex.set(day, []);
+      conversationDayIndex.get(day).push({ session, message, time, order });
+    }
+  }
+  for (const rows of conversationDayIndex.values()) rows.sort((a, b) => a.time - b.time || a.session.id.localeCompare(b.session.id) || a.order - b.order);
+}
+function showConversationDay(persona) {
+  rememberCurrentScreen();
+  rebuildConversationDayIndex(persona);
+  const date = conversationDayState.persona === persona && conversationDayState.date || [...conversationDayIndex.keys()].sort().at(-1) || dlTodayJst();
+  conversationDayState = { persona, date, month: date.slice(0, 7), limit: 80 };
+  selected = ""; viewMode = "conversation-day";
+  renderList(); renderViewer(); closeSidebar();
+  $("viewer").scrollTop = 0; window.scrollTo(0, 0);
+}
+function renderConversationDay() {
+  const state = conversationDayState, profile = personaProfileFor(state.persona);
+  if (!profile) return showFolders();
+  if (conversationDayIndexPersona !== state.persona) rebuildConversationDayIndex(state.persona);
+  const rows = conversationDayIndex.get(state.date) || [];
+  const first = new Date(state.month + "-01T00:00:00Z"), days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const cells = Array.from({ length: first.getUTCDay() }, () => '<span aria-hidden="true"></span>');
+  for (let n = 1; n <= days; n++) {
+    const day = state.month + "-" + String(n).padStart(2, "0"), count = conversationDayIndex.get(day)?.length || 0;
+    cells.push(`<button type="button" data-conversation-day="${day}" aria-label="${day} ${count}発言" aria-pressed="${day === state.date}" class="${count ? 'has-messages' : ''}">${n}<small>${count ? count + '件' : '–'}</small></button>`);
+  }
+  $("viewer").innerHTML = `<section class="archive-browser conversation-day-browser"><nav class="breadcrumbs"><button id="conversationDayBack">${esc(profile.displayName)}</button><span>›</span><strong>日付で会話を読む</strong></nav><h2>日付で会話を読む</h2><p class="muted">日本時間の発言時刻で、スレッドをまたいで表示。端末に取り込み済みのログが対象。</p><div class="conversation-day-tabs" aria-label="ペルソナ">${personaProfiles().map(p => `<button data-conversation-persona="${esc(p.id)}" aria-pressed="${p.id === profile.id}">${esc(p.displayName)}</button>`).join('')}</div><div class="conversation-day-month"><button id="conversationDayPrev" aria-label="会話の前の月">‹</button><label>年月<input id="conversationDayMonth" type="month" value="${state.month}"></label><button id="conversationDayNext" aria-label="会話の次の月">›</button></div><div class="conversation-day-calendar" aria-label="会話のカレンダー">${['日','月','火','水','木','金','土'].map(d => `<span>${d}</span>`).join('')}${cells.join('')}</div><div class="conversation-day-shortcuts"><button id="conversationDayYearAgo">1年前の今日</button><button id="conversationDayLatest">最新の会話の日</button></div><div id="conversationDaySummary" aria-live="polite"><h3>${state.date} · ${esc(profile.displayName)}</h3><p>${rows.length} 発言 · ${new Set(rows.map(r => r.session.id)).size} スレッド</p></div>${conversationDayUnknown ? `<p class="muted">日時が不明な ${conversationDayUnknown} 発言は、日付を判定できないため表示対象外。</p>` : ''}<div id="conversationDayMessages"></div><button id="conversationDayMore" type="button" ${rows.length <= state.limit ? 'hidden' : ''}>続きを表示（80発言ずつ）</button></section>`;
+  const choose = date => {
+    state.date = date; state.month = date.slice(0, 7); state.limit = 80;
+    renderConversationDay();
+  };
+  $("conversationDayBack").onclick = () => showPersonaHome(profile.id);
+  document.querySelectorAll('[data-conversation-day]').forEach(b => b.onclick = () => choose(b.dataset.conversationDay));
+  document.querySelectorAll('[data-conversation-persona]').forEach(b => b.onclick = () => {
+    state.persona = b.dataset.conversationPersona; state.limit = 80;
+    rebuildConversationDayIndex(state.persona); renderConversationDay();
+  });
+  $("conversationDayMonth").onchange = e => {
+    if (/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(e.target.value)) { state.month = e.target.value; renderConversationDay(); }
+    else e.target.value = state.month;
+  };
+  const moveMonth = delta => {
+    first.setUTCMonth(first.getUTCMonth() + delta);
+    state.month = first.toISOString().slice(0, 7); renderConversationDay();
+  };
+  $("conversationDayPrev").onclick = () => moveMonth(-1);
+  $("conversationDayNext").onclick = () => moveMonth(1);
+  $("conversationDayYearAgo").onclick = () => {
+    const today = dlTodayJst(), year = Number(today.slice(0, 4)) - 1;
+    const day = Math.min(Number(today.slice(8)), new Date(Date.UTC(year, Number(today.slice(5, 7)), 0)).getUTCDate());
+    choose(`${year}-${today.slice(5, 7)}-${String(day).padStart(2, '0')}`);
+  };
+  $("conversationDayLatest").onclick = () => choose([...conversationDayIndex.keys()].sort().at(-1) || dlTodayJst());
+  const append = (start, end) => {
+    const container = $("conversationDayMessages");
+    if (!rows.length) { container.innerHTML = '<p>この日の会話は、この端末のログにはありません。必要なら端末間同期やログ取り込みを行ってください。</p>'; return; }
+    for (const row of rows.slice(start, end)) {
+      const { session, message, time } = row, item = document.createElement('article');
+      item.className = 'conversation-day-message ' + (message.role === 'user' ? 'is-user' : 'is-assistant');
+      const timeJst = new Date(time + 32400000).toISOString().slice(11, 19);
+      item.innerHTML = `<div class="conversation-day-message-head"><strong>${esc(message.role === 'user' ? settings.userName || 'あなた' : message.role === 'assistant' ? profile.displayName : message.role)}</strong><time>${timeJst}</time></div><small>${esc(replaceText(session.title))}</small><div class="conversation-day-text"></div><button type="button">元の会話へ</button>`;
+      item.querySelector('.conversation-day-text').textContent = replaceText(message.text);
+      item.querySelector('button').onclick = () => { openSession(session.id); requestAnimationFrame(() => jumpToMessageStable(message.id)); };
+      container.append(item);
+    }
+  };
+  append(0, state.limit);
+  $("conversationDayMore").onclick = () => {
+    const start = state.limit; state.limit += 80; append(start, state.limit);
+    $("conversationDayMore").hidden = rows.length <= state.limit;
+  };
+}
+const conversationDayStyle = document.createElement('style');
+conversationDayStyle.textContent = `
+.conversation-day-browser{max-width:900px;margin:auto}.conversation-day-browser button{min-height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);padding:8px 12px;cursor:pointer}
+.conversation-day-tabs,.conversation-day-shortcuts{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.conversation-day-browser button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.conversation-day-month{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0}.conversation-day-month label{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}.conversation-day-month input{min-width:0;max-width:210px;background:var(--card);color:var(--ink);border:1px solid var(--line);padding:10px;border-radius:10px}
+.conversation-day-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center}.conversation-day-calendar button{padding:6px 0;min-width:0;min-height:50px}.conversation-day-calendar small{display:block;font-size:10px}.conversation-day-calendar .has-messages{font-weight:800;border-color:var(--muted)}
+.conversation-day-message{border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0;overflow-wrap:anywhere}.conversation-day-message.is-user{background:var(--user)}.conversation-day-message-head{display:flex;justify-content:space-between;gap:12px}.conversation-day-message small,.conversation-day-message time{color:var(--muted)}.conversation-day-text{white-space:pre-wrap;line-height:1.8;margin:16px 0}.conversation-day-message button{font-size:12px}
+`;
+document.head.append(conversationDayStyle);

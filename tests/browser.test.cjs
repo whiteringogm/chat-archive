@@ -410,7 +410,9 @@ test('compare registered diaries by date on mobile, including multiple and missi
   assert.match(await cards.textContent(), /同日の記録/);
   await page.locator('[data-dlcal="2025-11-09"]').click();
   assert.match(await cards.textContent(), /前日の記録/);
-  await page.locator('.dl-compare-tabs label').filter({ hasText: 'ひかちゃん' }).click();
+  assert.equal(await page.locator('.dl-compare-tabs label').filter({ hasText: 'ひかちゃん' }).count(), 0);
+  assert.equal(await page.locator('.dl-compare-tabs label').count(), 2);
+  await page.locator('.dl-compare-tabs label').filter({ hasText: 'まんちゃん' }).click();
   assert.equal(await cards.count(), 0);
   assert.equal(await page.getByText('2025-11-09 の日記はありません。').isVisible(), true);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

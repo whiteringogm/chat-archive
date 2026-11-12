@@ -513,9 +513,16 @@ function applyTheme() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = settings.theme === "dark" ? "#110e14" : "#261f2d";
 }
+const fixedFolderPersonas = Object.freeze({ "まんちゃん": "persona-man" });
+function configuredFolderPersona(folder) {
+  if (folder === "未分類") return "";
+  return Object.hasOwn(fixedFolderPersonas, folder)
+    ? fixedFolderPersonas[folder]
+    : settings.folderPersonas?.[folder] || "";
+}
 function folderPersonaForSession(s) {
   const folder = s.folder || "未分類";
-  return folder === "未分類" ? "" : settings.folderPersonas[folder] || "";
+  return configuredFolderPersona(folder);
 }
 function applyFolderPersonaToSession(s) {
   const folderPersona = folderPersonaForSession(s);
@@ -1648,7 +1655,7 @@ function backupPayload() {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     createdAt: new Date().toISOString(),
-    settings,
+    settings: { ...settings, folderPersonas: { ...settings.folderPersonas, ...fixedFolderPersonas } },
     sessions: all,
   };
 }
@@ -2139,7 +2146,7 @@ function renderMemories() {
   );
 }
 function personaHomeFolders(profile) {
-  return folderOptions().filter(folder => folder !== "未分類" && personaIdFor(Object.hasOwn(settings.folderPersonas, folder) ? settings.folderPersonas[folder] : folder) === profile.id);
+  return folderOptions().filter(folder => folder !== "未分類" && personaIdFor(configuredFolderPersona(folder) || folder) === profile.id);
 }
 function showPersonaHome(id) {
   if (!personaProfileFor(id)) return;
@@ -2286,10 +2293,11 @@ renderFolderSessions = function (folder) {
   const heading = $("viewer").querySelector(".browser-heading>div");
   if (!heading) return;
   if (folder !== "未分類") {
-    const current = personaDisplay(settings.folderPersonas[folder] || "");
+    const current = personaDisplay(configuredFolderPersona(folder));
+    const fixed = Object.hasOwn(fixedFolderPersonas, folder);
     heading.insertAdjacentHTML(
       "beforeend",
-      `<div class="folder-persona-setting"><label for="folderPersonaSetting">このフォルダの話者</label><select id="folderPersonaSetting"><option value="">セッションごとの設定</option>${personaOptions()
+      `<div class="folder-persona-setting"><label for="folderPersonaSetting">このフォルダの話者</label><select id="folderPersonaSetting"${fixed ? " disabled" : ""}><option value="">セッションごとの設定</option>${personaOptions()
         .filter((x) => x !== "未分類")
         .map(
           (x) =>
@@ -2298,6 +2306,7 @@ renderFolderSessions = function (folder) {
         .join("")}</select></div>`,
     );
     $("folderPersonaSetting").onchange = async (e) => {
+      if (fixed) return;
       if (e.target.value) {
         settings.folderPersonas[folder] = personaIdFor(e.target.value) || e.target.value;
         all.filter(s => !s.trashedAt && (s.folder || "未分類") === folder).forEach(applyFolderPersonaToSession);
